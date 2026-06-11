@@ -1,0 +1,153 @@
+"""
+Four specialized subagents that each query Splunk directly and return
+structured findings. Each agent uses Anthropic to interpret raw SPL results.
+"""
+import asyncio
+import json
+import anthropic
+import splunklib.client as splunk_lib
+import splunklib.results as splunk_results
+from config import settings
+
+
+def _make_anthropic() -> anthropic.Anthropic:
+    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+
+def _make_service() -> splunk_lib.Service:
+    return splunk_lib.connect(
+        host=settings.splunk_host,
+        port=settings.splunk_port,
+        splunkToken=settings.splunk_token,
+        autologin=True,
+    )
+
+
+def _run_spl(service: splunk_lib.Service, spl: str, earliest: str = "-30m") -> str:
+    try:
+        job = service.jobs.create(spl, exec_mode="blocking",
+                                  earliest_time=earliest, latest_time="now", count=30)
+        reader = splunk_results.JSONResultsReader(job.results(output_mode="json", count=30))
+        rows = [item for item in reader if isinstance(item, dict)]
+        if not rows:
+            return "No results found."
+        lines = [row.get("_raw", str(row))[:300] for row in rows[:30]]
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Search error: {e}"
+
+
+async def run_auth_agent(source_ip: str, affected_host: str, timestamp: str) -> str:
+    service = await asyncio.to_thread(_make_service)
+    earliest = "-30m"
+
+    spl = (
+        f'search index=* (sourcetype="WinEventLog:Security" OR sourcetype="linux_secure") '
+        f'(src_ip="{source_ip}" OR host="{affected_host}") '
+        f'earliest={earliest} latest=now | head 30 | table _time, EventCode, Account_Name, src_ip, host, _raw'
+    )
+    raw_results = await asyncio.to_thread(_run_spl, service, spl, earliest)
+
+    client = _make_anthropic()
+    prompt = f"""You are a security analyst. Analyze these authentication log events for threats.
+Source IP: {source_ip}, Affected host: {affected_host}, Alert time: {timestamp}
+
+Raw log events:
+{raw_results[:2000]}
+
+Respond with JSON only:
+{{"findings": "<2-3 sentence analysis>", "indicators": ["<indicator 1>", "<indicator 2>"]}}"""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text
+
+
+async def run_network_agent(source_ip: str, timestamp: str) -> str:
+    service = await asyncio.to_thread(_make_service)
+    earliest = "-30m"
+
+    spl = (
+        f'search index=* (sourcetype="firewall" OR sourcetype="pan:traffic" OR sourcetype="cisco:asa") '
+        f'(src="{source_ip}" OR dest="{source_ip}") '
+        f'earliest={earliest} latest=now | head 30 | table _time, src, dest, dpt, action, _raw'
+    )
+    raw_results = await asyncio.to_thread(_run_spl, service, spl, earliest)
+
+    client = _make_anthropic()
+    prompt = f"""You are a network security analyst. Analyze these network flow events.
+Source IP: {source_ip}, Alert time: {timestamp}
+
+Raw log events:
+{raw_results[:2000]}
+
+Respond with JSON only:
+{{"findings": "<2-3 sentence analysis>", "indicators": ["<indicator 1>", "<indicator 2>"]}}"""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text
+
+
+async def run_endpoint_agent(affected_host: str, timestamp: str) -> str:
+    service = await asyncio.to_thread(_make_service)
+    earliest = "-30m"
+
+    spl = (
+        f'search index=* (sourcetype="WinEventLog:System" OR sourcetype="sysmon" OR sourcetype="osquery") '
+        f'host="{affected_host}" '
+        f'earliest={earliest} latest=now | head 30 | table _time, host, EventCode, Process_Name, Process_Command_Line, _raw'
+    )
+    raw_results = await asyncio.to_thread(_run_spl, service, spl, earliest)
+
+    client = _make_anthropic()
+    prompt = f"""You are an endpoint forensics analyst. Analyze these process and system events.
+Affected host: {affected_host}, Alert time: {timestamp}
+
+Raw log events:
+{raw_results[:2000]}
+
+Respond with JSON only:
+{{"findings": "<2-3 sentence analysis>", "indicators": ["<indicator 1>", "<indicator 2>"]}}"""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text
+
+
+async def run_lateral_agent(affected_host: str, timestamp: str) -> str:
+    service = await asyncio.to_thread(_make_service)
+    earliest = "-30m"
+
+    spl = (
+        f'search index=* sourcetype="WinEventLog:Security" '
+        f'(EventCode=4648 OR EventCode=4624) host="{affected_host}" '
+        f'earliest={earliest} latest=now | head 30 | table _time, EventCode, Account_Name, Target_Server_Name, Logon_Type, _raw'
+    )
+    raw_results = await asyncio.to_thread(_run_spl, service, spl, earliest)
+
+    client = _make_anthropic()
+    prompt = f"""You are a threat hunter specializing in lateral movement detection.
+Affected host: {affected_host}, Alert time: {timestamp}
+
+Raw log events:
+{raw_results[:2000]}
+
+Respond with JSON only:
+{{"findings": "<2-3 sentence analysis>", "indicators": ["<indicator 1>", "<indicator 2>"], "other_hosts": ["<host 1>"]}}"""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text
