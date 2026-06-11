@@ -1,0 +1,42 @@
+[
+  {
+    "title": "Brute Force - Multiple Failed Logins from External IP",
+    "severity": "3",
+    "sid": "bots-001",
+    "src_ip": "192.168.250.100",
+    "dest": "win-dc01",
+    "_raw": "EventCode=4625 Account_Name=administrator Source_Network_Address=192.168.250.100 Failure_Reason=Unknown_user_name_or_bad_password"
+  },
+  {
+    "title": "Lateral Movement - SMB Connection to Internal Host",
+    "severity": "2",
+    "sid": "bots-002",
+    "src_ip": "192.168.250.100",
+    "dest": "win-web01",
+    "_raw": "EventCode=4648 Account_Name=administrator Target_Server_Name=win-web01 Process_Name=C:\\Windows\\System32\\net.exe"
+  },
+  {
+    "title": "Credential Dumping - LSASS Memory Access",
+    "severity": "1",
+    "sid": "bots-003",
+    "src_ip": "192.168.250.100",
+    "dest": "win-dc01",
+    "_raw": "EventCode=4656 Object_Name=\\Device\\HarddiskVolume2\\Windows\\System32\\lsass.exe Access_Mask=0x1fffff Process_Name=C:\\Windows\\System32\\cmd.exe"
+  },
+  {
+    "title": "Port Scan Detected from External Network",
+    "severity": "4",
+    "sid": "bots-004",
+    "src_ip": "185.220.101.42",
+    "dest": "192.168.1.1",
+    "_raw": "action=blocked src=185.220.101.42 dest=192.168.1.1 dpt=22,80,443,8080,3389 flags=SYN"
+  },
+  {
+    "title": "Suspicious PowerShell Execution",
+    "severity": "2",
+    "sid": "bots-005",
+    "src_ip": "192.168.1.20",
+    "dest": "win-web01",
+    "_raw": "EventCode=4688 Process_Command_Line=powershell.exe -nop -w hidden -encodedCommand JABjAD0ATgBlAHc= Creator_Process_Name=cmd.exe"
+  }
+]
