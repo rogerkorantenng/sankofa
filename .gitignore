@@ -1,0 +1,7 @@
+backend/venv/
+backend/sankofa.db
+frontend/node_modules/
+frontend/dist/
+.env
+__pycache__/
+*.pyc
