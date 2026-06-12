@@ -10,8 +10,8 @@ import splunklib.results as splunk_results
 from config import settings
 
 
-def _make_anthropic() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+def _make_anthropic() -> anthropic.AsyncAnthropic:
+    return anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 
 def _make_service() -> splunk_lib.Service:
@@ -20,18 +20,20 @@ def _make_service() -> splunk_lib.Service:
         port=settings.splunk_port,
         splunkToken=settings.splunk_token,
         autologin=True,
+        timeout=10,
     )
 
 
 def _run_spl(service: splunk_lib.Service, spl: str, earliest: str = "-30m") -> str:
     try:
         job = service.jobs.create(spl, exec_mode="blocking",
-                                  earliest_time=earliest, latest_time="now", count=30)
-        reader = splunk_results.JSONResultsReader(job.results(output_mode="json", count=30))
+                                  earliest_time=earliest, latest_time="now",
+                                  count=20, timeout=10)
+        reader = splunk_results.JSONResultsReader(job.results(output_mode="json", count=20))
         rows = [item for item in reader if isinstance(item, dict)]
         if not rows:
             return "No results found."
-        lines = [row.get("_raw", str(row))[:300] for row in rows[:30]]
+        lines = [row.get("_raw", str(row))[:200] for row in rows[:20]]
         return "\n".join(lines)
     except Exception as e:
         return f"Search error: {e}"
@@ -58,7 +60,7 @@ Raw log events:
 Respond with JSON only:
 {{"findings": "<2-3 sentence analysis>", "indicators": ["<indicator 1>", "<indicator 2>"]}}"""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
@@ -87,7 +89,7 @@ Raw log events:
 Respond with JSON only:
 {{"findings": "<2-3 sentence analysis>", "indicators": ["<indicator 1>", "<indicator 2>"]}}"""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
@@ -116,7 +118,7 @@ Raw log events:
 Respond with JSON only:
 {{"findings": "<2-3 sentence analysis>", "indicators": ["<indicator 1>", "<indicator 2>"]}}"""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
@@ -145,7 +147,7 @@ Raw log events:
 Respond with JSON only:
 {{"findings": "<2-3 sentence analysis>", "indicators": ["<indicator 1>", "<indicator 2>"], "other_hosts": ["<host 1>"]}}"""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],

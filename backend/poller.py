@@ -30,6 +30,14 @@ async def poll_and_triage() -> None:
                 uuid.NAMESPACE_URL,
                 raw.get("sid", raw.get("title", str(raw)))
             ))
+            # Skip alerts already processed
+            async with db.execute(
+                "SELECT status FROM alerts WHERE id = ?", (alert_id,)
+            ) as cur:
+                existing = await cur.fetchone()
+            if existing and existing[0] in ("done", "triaged"):
+                continue
+
             severity = SEVERITY_MAP.get(str(raw.get("severity", "3")), "medium")
             alert = Alert(
                 id=alert_id,

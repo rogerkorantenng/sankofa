@@ -55,17 +55,17 @@ Answer concisely. If referencing a Splunk search, prefix it with "[Searching Spl
     messages = [{"role": m["role"], "content": m["content"]} for m in history]
     messages.append({"role": "user", "content": req.message})
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     async def generate():
         full_response = ""
-        with client.messages.stream(
+        async with client.messages.stream(
             model="claude-sonnet-4-6",
             max_tokens=1024,
             system=system,
             messages=messages,
         ) as stream:
-            for text in stream.text_stream:
+            async for text in stream.text_stream:
                 full_response += text
                 yield f"data: {json.dumps({'text': text})}\n\n"
 

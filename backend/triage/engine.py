@@ -16,10 +16,10 @@ def route_alert(alert: Alert) -> str:
 
 
 async def run_fast_triage(alert: Alert) -> InvestigationReport:
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     prompt = build_fast_triage_prompt(alert)
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
+    message = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -74,9 +74,9 @@ Respond with a JSON object:
   "containment_steps": ["<action 1>", "<action 2>", "<action 3>"]
 }}"""
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    message = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
         max_tokens=1024,
         messages=[{"role": "user", "content": synthesis_prompt}],
     )

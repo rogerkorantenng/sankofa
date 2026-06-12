@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react"
+import ReactMarkdown from "react-markdown"
 import { streamChat } from "../api"
 import { ThinkingStep } from "./ThinkingStep"
 
@@ -26,6 +27,12 @@ export function ChatPanel({ alertId }: { alertId: string }) {
   const [input, setInput] = useState("")
   const [streaming, setStreaming] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMessages([])
+    setInput("")
+    setStreaming(false)
+  }, [alertId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -73,7 +80,20 @@ export function ChatPanel({ alertId }: { alertId: string }) {
                   part.type === "search" ? (
                     <ThinkingStep key={j} query={part.value} />
                   ) : (
-                    <p key={j} className="leading-relaxed whitespace-pre-wrap">{part.value}</p>
+                    <div key={j} className="prose prose-invert prose-xs max-w-none
+                      [&>p]:mb-2 [&>p]:leading-relaxed
+                      [&>ul]:ml-4 [&>ul]:list-disc [&>ul>li]:mb-0.5
+                      [&>ol]:ml-4 [&>ol]:list-decimal [&>ol>li]:mb-0.5
+                      [&>h1]:text-sm [&>h1]:font-bold [&>h1]:text-white [&>h1]:mb-1
+                      [&>h2]:text-xs [&>h2]:font-bold [&>h2]:text-white [&>h2]:mb-1
+                      [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:text-gray-300 [&>h3]:mb-1
+                      [&>strong]:text-white [&>strong]:font-semibold
+                      [&>code]:bg-gray-700 [&>code]:px-1 [&>code]:rounded [&>code]:text-blue-300
+                      [&>hr]:border-gray-700 [&>hr]:my-2
+                      [&>table]:w-full [&>table]:text-xs [&>table>thead>tr>th]:text-left [&>table>thead>tr>th]:pb-1 [&>table>thead>tr>th]:text-gray-400
+                      [&>table>tbody>tr>td]:py-0.5 [&>table>tbody>tr>td]:pr-3">
+                      <ReactMarkdown>{part.value}</ReactMarkdown>
+                    </div>
                   )
                 )}
                 {streaming && i === messages.length - 1 && (
