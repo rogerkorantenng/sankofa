@@ -8,6 +8,7 @@ from splunk_client import SplunkClient
 from models import Alert
 from database import save_alert, update_alert_status, save_report, init_db
 from triage.engine import triage_alert
+from runbook_engine import run_matching_runbooks, seed_default_runbooks
 from config import settings
 
 scheduler = AsyncIOScheduler()
@@ -87,7 +88,18 @@ async def poll_and_triage() -> None:
             continue
 
         async with aiosqlite.connect(settings.db_path) as db:
+            await seed_default_runbooks(db)
             await save_report(db, report)
+            try:
+                await run_matching_runbooks(
+                    db, report,
+                    alert_title=alert.title,
+                    alert_severity=alert.severity,
+                    source_ip=alert.source_ip or "unknown",
+                    affected_host=alert.affected_host or "unknown",
+                )
+            except Exception as e:
+                print(f"[poller] Runbook execution failed for {alert_id}: {e}")
             await update_alert_status(db, alert_id, "done")
 
 

@@ -5,8 +5,8 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from database import (get_alerts, get_alert_with_report, save_alert, init_db,
-                      save_action_decision, get_action_decisions)
-from models import Alert, ActionDecision
+                      save_action_decision, get_action_decisions, save_feedback)
+from models import Alert, ActionDecision, FeedbackEntry
 from config import settings
 
 router = APIRouter()
@@ -120,6 +120,31 @@ async def decide_action(alert_id: str, action_index: int, req: DecideRequest):
     async with aiosqlite.connect(settings.db_path) as db:
         await init_db(db)
         await save_action_decision(db, decision)
+        # Write feedback entry for the loop
+        raw = await get_alert_with_report(db, alert_id)
+        pattern = "unknown"
+        if raw:
+            title_lower = raw.get("title", "").lower()
+            mitre = raw.get("mitre_tactic", "").lower()
+            if "lsass" in title_lower or "credential" in mitre or "ta0006" in mitre:
+                pattern = "credential_access"
+            elif "lateral" in title_lower or "ta0008" in mitre:
+                pattern = "lateral_movement"
+            elif "brute" in title_lower:
+                pattern = "brute_force"
+            elif "recon" in title_lower or "scan" in title_lower or "ta0043" in mitre:
+                pattern = "reconnaissance"
+        feedback = FeedbackEntry(
+            id=str(uuid.uuid4()),
+            alert_id=alert_id,
+            ip=raw.get("source_ip") if raw else None,
+            host=raw.get("affected_host") if raw else None,
+            pattern=pattern,
+            analyst_action=req.status,
+            outcome="true_positive" if req.status == "approved" else "false_positive",
+            created_at=datetime.utcnow(),
+        )
+        await save_feedback(db, feedback)
     return {"ok": True, "status": req.status}
 
 

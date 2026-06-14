@@ -8,6 +8,9 @@ from poller import start_scheduler, stop_scheduler
 from routes.alerts import router as alerts_router
 from routes.ws import router as ws_router
 from chat import router as chat_router
+from routes.runbooks import router as runbooks_router
+from routes.action_log import router as action_log_router
+from routes.slack import router as slack_router
 
 
 @asynccontextmanager
@@ -31,3 +34,6 @@ app.add_middleware(
 app.include_router(alerts_router)
 app.include_router(ws_router)
 app.include_router(chat_router)
+app.include_router(runbooks_router)
+app.include_router(action_log_router)
+app.include_router(slack_router)

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import aiosqlite
 from datetime import datetime
 from models import Alert, InvestigationReport
 from triage.fast_triage import build_fast_triage_prompt, parse_fast_triage_response
@@ -8,6 +9,7 @@ from triage.subagents import (
     run_endpoint_agent, run_lateral_agent,
 )
 from config import settings
+from enrichment import enrich_ip, is_malicious
 import anthropic
 
 
@@ -65,6 +67,31 @@ async def run_full_investigation(alert: Alert) -> InvestigationReport:
         "lateral": lateral_f.get("spl_query", ""),
     }
 
+    # Enrich source IP for threat intel context
+    enrichment_context = ""
+    feedback_context = ""
+    try:
+        async with aiosqlite.connect(settings.db_path) as enrich_db:
+            from database import init_db as _init_db, get_feedback_for_pattern
+            await _init_db(enrich_db)
+            intel = await enrich_ip(enrich_db, source_ip)
+            if intel and is_malicious(intel.get("reputation_score", 0), intel.get("abuse_reports", 0)):
+                enrichment_context = (
+                    f"reputation_score={intel['reputation_score']}, "
+                    f"abuse_reports={intel['abuse_reports']}, "
+                    f"is_tor_exit={intel.get('is_tor_exit', False)}, "
+                    f"known_malware={intel.get('known_malware', [])}"
+                )
+            # Fetch recent feedback for context
+            bf_entries = await get_feedback_for_pattern(enrich_db, "brute_force", limit=2)
+            lm_entries = await get_feedback_for_pattern(enrich_db, "lateral_movement", limit=2)
+            all_entries = (bf_entries + lm_entries)[:3]
+            if all_entries:
+                outcomes = [f"{e['analyst_action']} ({e['outcome']})" for e in all_entries]
+                feedback_context = f"Recent analyst decisions: {', '.join(outcomes)}"
+    except Exception:
+        pass
+
     synthesis_prompt = f"""You are a senior SOC analyst synthesizing a multi-agent security investigation.
 
 Alert: {alert.title}
@@ -72,6 +99,8 @@ Severity: {alert.severity}
 Source IP: {source_ip}
 Affected host: {host}
 Timestamp: {timestamp}
+{f'Threat Intel for {source_ip}: {enrichment_context}' if enrichment_context else ''}
+{f'Analyst history: {feedback_context}' if feedback_context else ''}
 
 Subagent findings:
 AUTH: {subagent_findings['auth'][:800]}
