@@ -58,6 +58,9 @@ async def slack_action(request: Request):
     except Exception:
         value = {}
 
+    # response_url lets us update the original message (replace the buttons)
+    response_url = payload.get("response_url", "")
+
     async with aiosqlite.connect(settings.db_path) as db:
         await init_db(db)
 
@@ -66,10 +69,52 @@ async def slack_action(request: Request):
             decision = value.get("decision", "dismissed")
             result = f"Analyst {decision} via Slack"
             await update_action_log_status(db, log_id, decision, result)
+
+            # Get the original message text from payload for context
+            original_text = ""
+            for block in payload.get("message", {}).get("blocks", []):
+                if block.get("type") == "section":
+                    original_text = block.get("text", {}).get("text", "")
+                    break
+
             if decision == "approved":
-                await send_slack({"text": "✅ Action approved and executed by analyst via Slack."})
+                updated_card = {
+                    "replace_original": True,
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": original_text or "🔒 Action request"},
+                        },
+                        {
+                            "type": "context",
+                            "elements": [{"type": "mrkdwn", "text": "✅ *Approved* by analyst via Slack"}],
+                        },
+                    ],
+                }
             else:
-                await send_slack({"text": "✗ Action dismissed by analyst via Slack."})
+                updated_card = {
+                    "replace_original": True,
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": original_text or "🔒 Action request"},
+                        },
+                        {
+                            "type": "context",
+                            "elements": [{"type": "mrkdwn", "text": "✗ *Dismissed* by analyst via Slack"}],
+                        },
+                    ],
+                }
+
+            # Update the original message to replace buttons with status
+            if response_url:
+                import httpx
+                async with httpx.AsyncClient(timeout=10) as client:
+                    await client.post(response_url, json=updated_card)
+            else:
+                # Fallback: send new confirmation
+                msg = "✅ Action approved and executed." if decision == "approved" else "✗ Action dismissed."
+                await send_slack({"text": msg})
 
         elif action_id == "false_positive":
             title = value.get("title", "unknown")
@@ -82,6 +127,15 @@ async def slack_action(request: Request):
                 created_at=datetime.utcnow(),
             )
             await save_feedback(db, entry)
-            await send_slack({"text": f"✓ Marked as false positive: {title}"})
+            if response_url:
+                import httpx
+                async with httpx.AsyncClient(timeout=10) as client:
+                    await client.post(response_url, json={
+                        "replace_original": True,
+                        "blocks": [
+                            {"type": "section", "text": {"type": "mrkdwn", "text": f"Alert: *{title}*"}},
+                            {"type": "context", "elements": [{"type": "mrkdwn", "text": "✓ Marked as false positive"}]},
+                        ],
+                    })
 
     return {"ok": True}
