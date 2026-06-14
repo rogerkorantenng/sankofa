@@ -81,17 +81,35 @@ export function GraphView() {
   // Measure container after layout with ResizeObserver
   useEffect(() => {
     if (!containerRef.current) return
+    const el = containerRef.current
+
+    const measure = () => {
+      const rect = el.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        setDimensions({ width: rect.width, height: rect.height })
+      }
+    }
+
+    // Initial measure — retry until we get non-zero height
+    measure()
+    const retryTimer = setTimeout(measure, 50)
+    const retryTimer2 = setTimeout(measure, 150)
+
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0]
-      if (entry) {
+      if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
         setDimensions({
           width: entry.contentRect.width,
           height: entry.contentRect.height,
         })
       }
     })
-    observer.observe(containerRef.current)
-    return () => observer.disconnect()
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      clearTimeout(retryTimer)
+      clearTimeout(retryTimer2)
+    }
   }, [])
 
   // Rebuild graph when alerts or dimensions change
@@ -229,22 +247,27 @@ export function GraphView() {
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-gray-950 relative">
+    <div
+      ref={containerRef}
+      style={{ position: "absolute", inset: 0, background: "#030712" }}
+    >
       {dimensions.width === 0 ? (
-        <div className="flex items-center justify-center h-full text-gray-600 text-xs">
-          Rendering graph…
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#4B5563", fontSize: "12px" }}>
+          Loading graph…
         </div>
       ) : (
         <svg
           ref={svgRef}
           width={dimensions.width}
           height={dimensions.height}
-          className="block"
+          style={{ display: "block" }}
         />
       )}
-      <div className="absolute bottom-2 left-2 text-xs text-gray-600">
-        Scroll to zoom · Drag nodes · Click to investigate
-      </div>
+      {dimensions.width > 0 && (
+        <div style={{ position: "absolute", bottom: 8, left: 8, fontSize: "10px", color: "#374151", fontFamily: "monospace" }}>
+          Scroll to zoom · Drag nodes · Click to investigate
+        </div>
+      )}
     </div>
   )
 }

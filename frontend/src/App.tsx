@@ -45,11 +45,11 @@ export default function App() {
             {viewMode === "graph" ? (
               <motion.div
                 key="graph"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.2 }}
-                className="absolute inset-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                style={{ position: "absolute", inset: 0 }}
               >
                 <GraphView />
               </motion.div>
