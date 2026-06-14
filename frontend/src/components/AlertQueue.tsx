@@ -6,10 +6,7 @@ import { fetchAlert, seedAlerts, seedCampaign } from "../api"
 import type { Alert } from "../types"
 
 export function AlertQueue() {
-  const {
-    alerts, setAlerts, selectedAlertId,
-    setSelectedAlertId, setSelectedAlert, setWsConnected,
-  } = useSankofaStore()
+  const { alerts, setAlerts, selectedAlertId, setSelectedAlertId, setSelectedAlert, setWsConnected } = useSankofaStore()
 
   useEffect(() => {
     const ws = new WebSocket(`ws://${window.location.host}/ws/alerts`)
@@ -17,7 +14,7 @@ export function AlertQueue() {
     ws.onclose = () => setWsConnected(false)
     ws.onmessage = (e: MessageEvent) => {
       try { setAlerts(JSON.parse(e.data as string) as Alert[]) }
-      catch { /* ignore */ }
+      catch { /* noop */ }
     }
     return () => ws.close()
   }, [setAlerts, setWsConnected])
@@ -28,154 +25,122 @@ export function AlertQueue() {
     setSelectedAlert(detail)
   }
 
-  const criticalCount = alerts.filter(a => a.severity === "critical").length
-  const activeCount = alerts.filter(a => a.status === "investigating" || a.status === "triaging").length
-
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      height: "100%",
-      background: "var(--bg-panel)",
-    }}>
-      {/* Header */}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg-0)" }}>
+
+      {/* Queue header */}
       <div style={{
         padding: "12px 14px 10px",
-        borderBottom: "1px solid var(--border)",
-        background: "var(--bg-panel)",
+        borderBottom: "1px solid var(--border-0)",
         flexShrink: 0,
       }}>
-        {/* Logo row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: 18,
-              fontWeight: 700,
-              color: "#E8F0F8",
-              letterSpacing: "0.08em",
-            }}>
-              SANKOFA
-            </span>
-            <span style={{
-              fontSize: 8,
-              color: "var(--accent)",
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-            }}>
-              SOC·AI
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 1 }}>
-            {[0,1,2].map(i => (
-              <div key={i} style={{
-                width: 4,
-                height: 4,
-                background: i === 0 ? "var(--green)" : "var(--border-bright)",
-                borderRadius: 1,
-              }} />
-            ))}
-          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-0)" }}>
+            Alert Queue
+          </span>
+          <span style={{
+            fontSize: 11,
+            color: "var(--text-2)",
+            background: "var(--bg-2)",
+            border: "1px solid var(--border-0)",
+            borderRadius: 10,
+            padding: "1px 8px",
+          }}>
+            {alerts.length}
+          </span>
         </div>
 
-        {/* Stats row */}
-        {alerts.length > 0 && (
-          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            <div style={{
-              flex: 1,
-              padding: "4px 8px",
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--border)",
-              textAlign: "center",
-            }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: criticalCount > 0 ? "#FF2D3F" : "var(--text-primary)", lineHeight: 1 }}>
-                {alerts.length}
-              </div>
-              <div style={{ fontSize: 8, color: "var(--text-secondary)", letterSpacing: "0.1em", marginTop: 2 }}>ALERTS</div>
+        {/* Summary chips */}
+        {alerts.length > 0 && (() => {
+          const crit = alerts.filter(a => a.severity === "critical").length
+          const active = alerts.filter(a => a.status === "investigating" || a.status === "triaging").length
+          return (
+            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+              {crit > 0 && (
+                <span style={{
+                  fontSize: 11,
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                  background: "var(--critical-bg)",
+                  border: "1px solid var(--critical-border)",
+                  color: "var(--critical-text)",
+                  fontWeight: 500,
+                }}>
+                  {crit} critical
+                </span>
+              )}
+              {active > 0 && (
+                <span style={{
+                  fontSize: 11,
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                  background: "var(--blue-bg)",
+                  border: "1px solid var(--blue-border)",
+                  color: "var(--blue-text)",
+                  fontWeight: 500,
+                }}>
+                  {active} analyzing
+                </span>
+              )}
             </div>
-            <div style={{
-              flex: 1,
-              padding: "4px 8px",
-              background: criticalCount > 0 ? "rgba(255,45,63,0.06)" : "var(--bg-elevated)",
-              border: `1px solid ${criticalCount > 0 ? "rgba(255,45,63,0.3)" : "var(--border)"}`,
-              textAlign: "center",
-            }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: criticalCount > 0 ? "#FF2D3F" : "var(--text-dim)", lineHeight: 1 }}>
-                {criticalCount}
-              </div>
-              <div style={{ fontSize: 8, color: "var(--text-secondary)", letterSpacing: "0.1em", marginTop: 2 }}>CRITICAL</div>
-            </div>
-            <div style={{
-              flex: 1,
-              padding: "4px 8px",
-              background: activeCount > 0 ? "rgba(0,212,255,0.04)" : "var(--bg-elevated)",
-              border: `1px solid ${activeCount > 0 ? "rgba(0,212,255,0.2)" : "var(--border)"}`,
-              textAlign: "center",
-            }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: activeCount > 0 ? "var(--accent)" : "var(--text-dim)", lineHeight: 1 }}>
-                {activeCount}
-              </div>
-              <div style={{ fontSize: 8, color: "var(--text-secondary)", letterSpacing: "0.1em", marginTop: 2 }}>ACTIVE</div>
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
-        {/* Action buttons */}
+        {/* Seed buttons */}
         <div style={{ display: "flex", gap: 6 }}>
           <button
             onClick={() => seedCampaign().catch(console.error)}
             style={{
               flex: 1,
-              padding: "5px 0",
-              background: "rgba(0,212,255,0.06)",
-              border: "1px solid rgba(0,212,255,0.3)",
-              color: "var(--accent)",
-              fontSize: 9,
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 700,
-              letterSpacing: "0.1em",
+              padding: "6px 0",
+              borderRadius: 6,
+              border: "1px solid var(--blue-border)",
+              background: "var(--blue-bg)",
+              color: "var(--blue-text)",
+              fontSize: 12,
+              fontWeight: 500,
               cursor: "pointer",
-              transition: "all 0.15s",
+              transition: "all 0.1s",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,212,255,0.12)" }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,212,255,0.06)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--blue-border)" }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--blue-bg)" }}
           >
-            ▶ CAMPAIGN
+            Load Campaign
           </button>
           <button
             onClick={() => seedAlerts().catch(console.error)}
             style={{
               flex: 1,
-              padding: "5px 0",
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--border-bright)",
-              color: "var(--text-secondary)",
-              fontSize: 9,
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: "0.08em",
+              padding: "6px 0",
+              borderRadius: 6,
+              border: "1px solid var(--border-0)",
+              background: "var(--bg-0)",
+              color: "var(--text-1)",
+              fontSize: 12,
+              fontWeight: 500,
               cursor: "pointer",
-              transition: "all 0.15s",
+              transition: "all 0.1s",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)" }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)" }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-0)" }}
           >
-            SEED DEMO
+            Seed Demo
           </button>
         </div>
       </div>
 
-      {/* Alert list header */}
+      {/* Sort header */}
       {alerts.length > 0 && (
         <div style={{
           display: "flex",
-          padding: "5px 12px",
-          borderBottom: "1px solid var(--border)",
-          background: "var(--bg-base)",
+          alignItems: "center",
+          padding: "6px 14px",
+          borderBottom: "1px solid var(--border-0)",
+          background: "var(--bg-1)",
           flexShrink: 0,
         }}>
-          <span style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase" }}>
-            THREAT QUEUE — SORTED BY RISK
+          <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500 }}>
+            Sorted by risk score
           </span>
         </div>
       )}
@@ -183,17 +148,23 @@ export function AlertQueue() {
       {/* Alert list */}
       <div style={{ flex: 1, overflowY: "auto" }}>
         {alerts.length === 0 ? (
-          <div style={{
-            padding: "32px 16px",
-            textAlign: "center",
-          }}>
-            <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.2 }}>⬡</div>
-            <p style={{ fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.1em" }}>
-              NO ACTIVE THREATS
-            </p>
-            <p style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 4 }}>
-              Load campaign or seed demo data above
-            </p>
+          <div style={{ padding: "32px 16px", textAlign: "center" }}>
+            <div style={{
+              width: 40, height: 40,
+              borderRadius: 8,
+              background: "var(--bg-2)",
+              border: "1px solid var(--border-0)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 12px",
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5">
+                <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              </svg>
+            </div>
+            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)", marginBottom: 4 }}>No active alerts</p>
+            <p style={{ fontSize: 12, color: "var(--text-2)" }}>Load campaign data to begin triage</p>
           </div>
         ) : (
           <motion.div layout>

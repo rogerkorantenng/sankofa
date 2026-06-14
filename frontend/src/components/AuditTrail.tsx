@@ -1,35 +1,26 @@
 import { useState } from "react"
 
 const AGENT_LABELS: Record<string, string> = {
-  auth:     "AUTH AGENT",
-  network:  "NETWORK AGENT",
-  endpoint: "ENDPOINT AGENT",
-  lateral:  "LATERAL MOVEMENT",
+  auth:     "Authentication",
+  network:  "Network",
+  endpoint: "Endpoint",
+  lateral:  "Lateral Movement",
 }
 
-export function AuditTrail({
-  findings,
-  queries,
-}: {
-  findings: Record<string, string>
-  queries: Record<string, string>
-}) {
-  const agents = Object.keys(findings).filter((k) => findings[k])
+export function AuditTrail({ findings, queries }: { findings: Record<string, string>; queries: Record<string, string> }) {
+  const agents = Object.keys(findings).filter(k => findings[k])
   if (!agents.length) return null
 
   return (
-    <div>
-      <div className="section-divider" style={{ marginBottom: 8 }}>EVIDENCE TRAIL</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {agents.map((agent) => (
-          <AgentEvidence
-            key={agent}
-            label={AGENT_LABELS[agent] ?? agent.toUpperCase()}
-            finding={findings[agent]}
-            spl={queries?.[agent] ?? ""}
-          />
-        ))}
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {agents.map(agent => (
+        <AgentEvidence
+          key={agent}
+          label={AGENT_LABELS[agent] ?? agent}
+          finding={findings[agent]}
+          spl={queries?.[agent] ?? ""}
+        />
+      ))}
     </div>
   )
 }
@@ -40,76 +31,59 @@ function AgentEvidence({ label, finding, spl }: { label: string; finding: string
   const displaySpl = isMcp ? spl.replace("[MCP generated] ", "") : spl
 
   return (
-    <div style={{
-      border: "1px solid var(--border)",
-      background: "var(--bg-elevated)",
-      overflow: "hidden",
-    }}>
+    <div style={{ border: "1px solid var(--border-0)", borderRadius: 6, overflow: "hidden", background: "var(--bg-1)" }}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(o => !o)}
         style={{
           width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "6px 10px",
+          padding: "7px 11px",
           background: "transparent",
           border: "none",
           cursor: "pointer",
           textAlign: "left",
+          gap: 8,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <span style={{ fontSize: 8, color: "var(--text-secondary)", letterSpacing: "0.12em", fontWeight: 700 }}>
-            {label}
-          </span>
+          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-0)" }}>{label}</span>
           {isMcp && (
             <span style={{
-              fontSize: 7,
+              fontSize: 10,
               padding: "1px 5px",
-              background: "rgba(139,92,246,0.15)",
-              border: "1px solid rgba(139,92,246,0.3)",
-              color: "#A78BFA",
-              letterSpacing: "0.1em",
-              fontWeight: 700,
-            }}>
-              MCP
-            </span>
+              borderRadius: 3,
+              background: "var(--purple-bg)",
+              border: "1px solid var(--purple-border)",
+              color: "var(--purple-text)",
+              fontWeight: 500,
+            }}>MCP</span>
           )}
         </div>
-        <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{open ? "▾" : "▸"}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", color: "var(--text-2)" }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
       </button>
       {open && (
-        <div style={{
-          padding: "8px 10px",
-          borderTop: "1px solid var(--border)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}>
-          <p style={{ fontSize: 10, color: "var(--text-primary)", lineHeight: 1.5, margin: 0 }}>
-            {finding}
-          </p>
+        <div style={{ padding: "8px 11px 10px", borderTop: "1px solid var(--border-0)", display: "flex", flexDirection: "column", gap: 8, background: "var(--bg-0)" }}>
+          <p style={{ fontSize: 12, color: "var(--text-1)", lineHeight: 1.55 }}>{finding}</p>
           {spl && (
             <div>
-              <div style={{ fontSize: 7, color: "var(--text-dim)", letterSpacing: "0.12em", marginBottom: 4 }}>
-                SPL QUERY
-              </div>
+              <p style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, fontWeight: 500 }}>SPL Query</p>
               <pre style={{
-                fontSize: 9,
-                color: "#7BB8D4",
-                fontFamily: "'JetBrains Mono', monospace",
-                background: "var(--bg-base)",
-                padding: "6px 8px",
-                margin: 0,
+                fontSize: 11,
+                color: "var(--blue-text)",
+                background: "var(--bg-1)",
+                border: "1px solid var(--border-0)",
+                borderRadius: 4,
+                padding: "7px 10px",
                 overflowX: "auto",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-all",
-                border: "1px solid var(--border)",
                 lineHeight: 1.5,
-              }}>
-                {displaySpl}
-              </pre>
+                fontFamily: "'JetBrains Mono', monospace",
+              }}>{displaySpl}</pre>
             </div>
           )}
         </div>

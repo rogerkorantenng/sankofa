@@ -12,171 +12,132 @@ export default function App() {
   const { viewMode, actionLogOpen, setActionLogOpen } = useSankofaStore()
 
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      height: "100vh",
-      background: "var(--bg-base)",
-      overflow: "hidden",
-    }}>
-      {/* Stats bar */}
-      <StatsBar />
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg-1)", overflow: "hidden" }}>
 
-      {/* Nav bar */}
-      <div style={{
+      {/* Top nav — Sentry/Linear style */}
+      <nav style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0 14px",
-        height: 34,
-        background: "var(--bg-panel)",
-        borderBottom: "1px solid var(--border)",
+        padding: "0 16px",
+        height: 48,
+        background: "var(--bg-0)",
+        borderBottom: "1px solid var(--border-0)",
         flexShrink: 0,
+        zIndex: 10,
       }}>
-        {/* Breadcrumb */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{
-            fontSize: 8,
-            color: "var(--text-dim)",
-            letterSpacing: "0.15em",
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: 6,
+            background: "var(--blue)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#fff",
+            letterSpacing: "-0.02em",
           }}>
-            OPERATIONS /
+            S
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-0)", letterSpacing: "-0.01em" }}>
+            Sankofa
           </span>
           <span style={{
-            fontSize: 8,
-            color: "var(--accent)",
-            letterSpacing: "0.15em",
-            fontWeight: 700,
+            fontSize: 11,
+            fontWeight: 500,
+            padding: "2px 7px",
+            borderRadius: 4,
+            background: "var(--blue-bg)",
+            color: "var(--blue-text)",
+            border: "1px solid var(--blue-border)",
           }}>
-            THREAT INTELLIGENCE
+            SOC Platform
           </span>
         </div>
 
-        {/* Controls */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Right controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <StatsBar />
+          <div style={{ width: 1, height: 20, background: "var(--border-0)" }} />
           <ViewSwitcher />
-
-          <div style={{ width: 1, height: 14, background: "var(--border)" }} />
-
+          <div style={{ width: 1, height: 20, background: "var(--border-0)" }} />
           <a
             href="/runbooks"
             style={{
-              fontSize: 9,
-              color: "var(--text-secondary)",
-              letterSpacing: "0.1em",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--text-1)",
               textDecoration: "none",
-              fontFamily: "'JetBrains Mono', monospace",
-              transition: "color 0.12s",
+              padding: "4px 10px",
+              borderRadius: 6,
+              transition: "background 0.1s",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)" }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)" }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
           >
-            RUNBOOKS
+            Runbooks
           </a>
-
           <button
             onClick={() => setActionLogOpen(!actionLogOpen)}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 5,
-              padding: "3px 8px",
-              background: actionLogOpen ? "rgba(0,232,135,0.08)" : "transparent",
-              border: `1px solid ${actionLogOpen ? "rgba(0,232,135,0.3)" : "var(--border)"}`,
-              color: actionLogOpen ? "var(--green)" : "var(--text-secondary)",
-              fontSize: 9,
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: "0.1em",
+              gap: 6,
+              padding: "5px 12px",
+              borderRadius: 6,
+              border: "1px solid var(--border-0)",
+              background: actionLogOpen ? "var(--bg-2)" : "var(--bg-0)",
+              color: actionLogOpen ? "var(--text-0)" : "var(--text-1)",
+              fontSize: 13,
+              fontWeight: 500,
               cursor: "pointer",
-              transition: "all 0.12s",
+              transition: "all 0.1s",
             }}
           >
-            <span style={{ fontSize: 8 }}>◈</span>
-            ACTION LOG
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M8 2v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
+            </svg>
+            Action Log
           </button>
         </div>
-      </div>
+      </nav>
 
-      {/* Main content */}
-      <div style={{
-        display: "flex",
-        flex: 1,
-        overflow: "hidden",
-        position: "relative",
-      }}>
-        {/* Left panel — Alert Queue */}
+      {/* Main layout */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+
+        {/* Left — Alert Queue */}
         <div style={{
-          width: 320,
+          width: 340,
           flexShrink: 0,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          borderRight: "1px solid var(--border)",
+          borderRight: "1px solid var(--border-0)",
+          background: "var(--bg-0)",
         }}>
           <AlertQueue />
         </div>
 
-        {/* Right panel — Views */}
-        <div style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          position: "relative",
-        }}>
-          {/* View label */}
-          <div style={{
-            position: "absolute",
-            top: 8,
-            left: 12,
-            zIndex: 10,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            pointerEvents: "none",
-          }}>
-            <span style={{
-              fontSize: 8,
-              color: "var(--text-dim)",
-              letterSpacing: "0.15em",
-              background: "rgba(7,11,15,0.8)",
-              padding: "2px 6px",
-              border: "1px solid var(--border)",
-            }}>
-              {viewMode === "graph" ? "THREAT GRAPH" : "ATTACK TIMELINE"}
-            </span>
-          </div>
-
+        {/* Right — Visualization */}
+        <div style={{ flex: 1, position: "relative", overflow: "hidden", background: "var(--bg-1)" }}>
           <AnimatePresence mode="wait">
             {viewMode === "graph" ? (
-              <motion.div
-                key="graph"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                style={{ position: "absolute", inset: 0 }}
-              >
+              <motion.div key="graph" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} style={{ position: "absolute", inset: 0 }}>
                 <GraphView />
               </motion.div>
             ) : (
-              <motion.div
-                key="timeline"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                style={{ position: "absolute", inset: 0, overflowY: "auto" }}
-              >
+              <motion.div key="timeline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} style={{ position: "absolute", inset: 0, overflowY: "auto" }}>
                 <TimelineView />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Investigation sidebar */}
           <InvestigationSidebar />
-
-          {/* Action log */}
           <ActionLog />
         </div>
       </div>

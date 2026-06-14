@@ -11,93 +11,86 @@ export function InvestigationSidebar() {
       {selectedAlert && (
         <motion.div
           key="sidebar"
-          initial={{ x: "100%", opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: "100%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 320, damping: 32 }}
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", stiffness: 400, damping: 38 }}
           style={{
             position: "absolute",
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: "62%",
+            right: 0, top: 0, bottom: 0,
+            width: "64%",
             display: "flex",
             flexDirection: "column",
-            background: "var(--bg-panel)",
-            borderLeft: "1px solid var(--border)",
+            background: "var(--bg-0)",
+            borderLeft: "1px solid var(--border-0)",
             zIndex: 20,
           }}
         >
-          {/* Sidebar header */}
+          {/* Header */}
           <div style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "0 14px",
-            height: 34,
-            background: "var(--bg-base)",
-            borderBottom: "1px solid var(--border)",
+            padding: "0 16px",
+            height: 44,
+            borderBottom: "1px solid var(--border-0)",
             flexShrink: 0,
+            background: "var(--bg-0)",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.12em" }}>INVESTIGATION /</span>
-              <span style={{
-                fontSize: 8,
-                color: "var(--accent)",
-                letterSpacing: "0.12em",
-                fontWeight: 700,
-                maxWidth: 280,
+            <div style={{ overflow: "hidden" }}>
+              <p style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--text-0)",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
               }}>
                 {selectedAlert.title}
-              </span>
+              </p>
             </div>
             <button
               onClick={() => { setSelectedAlertId(null); setSelectedAlert(null) }}
               style={{
-                width: 20,
-                height: 20,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                width: 28, height: 28,
+                flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: 6,
+                border: "1px solid var(--border-0)",
                 background: "transparent",
-                border: "1px solid var(--border)",
-                color: "var(--text-secondary)",
-                fontSize: 10,
+                color: "var(--text-2)",
+                fontSize: 14,
                 cursor: "pointer",
-                transition: "all 0.12s",
+                transition: "all 0.1s",
+                marginLeft: 10,
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--text-secondary)" }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)" }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
             >
-              ✕
+              ×
             </button>
           </div>
 
-          {/* Report section */}
-          <div style={{ flexShrink: 0, overflowY: "auto", maxHeight: "54%" }}>
+          {/* Report */}
+          <div style={{ flexShrink: 0, overflowY: "auto", maxHeight: "55%", borderBottom: "1px solid var(--border-0)" }}>
             <ReportCard alert={selectedAlert} />
           </div>
 
-          {/* Divider */}
+          {/* Chat section */}
           <div style={{
             display: "flex",
             alignItems: "center",
-            padding: "0 14px",
-            height: 26,
-            background: "var(--bg-base)",
-            borderTop: "1px solid var(--border)",
-            borderBottom: "1px solid var(--border)",
+            padding: "0 16px",
+            height: 36,
+            background: "var(--bg-1)",
+            borderBottom: "1px solid var(--border-0)",
             flexShrink: 0,
           }}>
-            <span style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.15em" }}>
-              AI ANALYST — ASK A FOLLOW-UP
+            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-1)" }}>
+              Ask AI Analyst
             </span>
           </div>
 
-          {/* Chat */}
           <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
             <ChatPanel alertId={selectedAlert.id} />
           </div>

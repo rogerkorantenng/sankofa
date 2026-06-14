@@ -1,31 +1,30 @@
 import type { SeverityLevel } from "../types"
 
-const CONFIG: Record<SeverityLevel, { color: string; bg: string; label: string; dot: string }> = {
-  critical: { color: "#FF2D3F", bg: "rgba(255,45,63,0.1)", label: "CRIT", dot: "#FF2D3F" },
-  high:     { color: "#FF7A1A", bg: "rgba(255,122,26,0.1)", label: "HIGH", dot: "#FF7A1A" },
-  medium:   { color: "#FFB800", bg: "rgba(255,184,0,0.08)", label: " MED", dot: "#FFB800" },
-  low:      { color: "#2D5A7A", bg: "rgba(45,90,122,0.1)", label: " LOW", dot: "#2D5A7A" },
+const CONFIG: Record<SeverityLevel, { bg: string; border: string; text: string; dot: string; label: string }> = {
+  critical: { bg: "var(--critical-bg)", border: "var(--critical-border)", text: "var(--critical-text)", dot: "var(--critical)", label: "Critical" },
+  high:     { bg: "var(--high-bg)",     border: "var(--high-border)",     text: "var(--high-text)",     dot: "var(--high)",     label: "High"     },
+  medium:   { bg: "var(--medium-bg)",   border: "var(--medium-border)",   text: "var(--medium-text)",   dot: "var(--medium)",   label: "Medium"   },
+  low:      { bg: "var(--low-bg)",      border: "var(--low-border)",      text: "var(--low-text)",      dot: "var(--low)",      label: "Low"      },
 }
 
 export function SeverityBadge({ severity }: { severity: SeverityLevel }) {
   const c = CONFIG[severity]
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "1px 6px",
-        border: `1px solid ${c.color}`,
-        background: c.bg,
-        color: c.color,
-        fontSize: 9,
-        fontFamily: "'JetBrains Mono', monospace",
-        fontWeight: 700,
-        letterSpacing: "0.12em",
-      }}
-    >
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.color, flexShrink: 0 }} />
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 5,
+      padding: "2px 8px",
+      borderRadius: 4,
+      border: `1px solid ${c.border}`,
+      background: c.bg,
+      color: c.text,
+      fontSize: 11,
+      fontWeight: 500,
+      letterSpacing: "0.01em",
+      whiteSpace: "nowrap",
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.dot, flexShrink: 0 }} />
       {c.label}
     </span>
   )

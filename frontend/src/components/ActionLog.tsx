@@ -4,17 +4,17 @@ import { useSankofaStore } from "../store"
 import { fetchActions } from "../api"
 import type { ActionLogEntry } from "../types"
 
-const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
-  executed:         { color: "var(--green)",  label: "EXEC" },
-  approved:         { color: "var(--green)",  label: "APRV" },
-  pending_approval: { color: "#FFB800",       label: "PEND" },
-  dismissed:        { color: "var(--text-dim)", label: "DISM" },
-  failed:           { color: "#FF2D3F",       label: "FAIL" },
+const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
+  executed:         { color: "var(--green-text)",  bg: "var(--green-bg)",   label: "Executed"  },
+  approved:         { color: "var(--green-text)",  bg: "var(--green-bg)",   label: "Approved"  },
+  pending_approval: { color: "var(--medium-text)", bg: "var(--medium-bg)",  label: "Pending"   },
+  dismissed:        { color: "var(--text-2)",      bg: "var(--bg-2)",       label: "Dismissed" },
+  failed:           { color: "var(--critical-text)", bg: "var(--critical-bg)", label: "Failed" },
 }
 
-function formatTime(ts: string | null): string {
+function formatTime(ts: string | null) {
   if (!ts) return "—"
-  try { return new Date(ts).toISOString().slice(11, 19) }
+  try { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }
   catch { return "—" }
 }
 
@@ -36,14 +36,9 @@ export function ActionLog() {
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            animate={{ opacity: 0.3 }}
             exit={{ opacity: 0 }}
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "rgba(7,11,15,0.6)",
-              zIndex: 30,
-            }}
+            style={{ position: "absolute", inset: 0, background: "#000", zIndex: 30 }}
             onClick={() => setActionLogOpen(false)}
           />
           <motion.div
@@ -51,131 +46,105 @@ export function ActionLog() {
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            transition={{ type: "spring", stiffness: 400, damping: 38 }}
             style={{
               position: "absolute",
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: 320,
-              background: "var(--bg-panel)",
-              borderLeft: "1px solid var(--border)",
+              right: 0, top: 0, bottom: 0,
+              width: 360,
+              background: "var(--bg-0)",
+              borderLeft: "1px solid var(--border-0)",
               zIndex: 40,
               display: "flex",
               flexDirection: "column",
+              boxShadow: "-4px 0 24px rgba(0,0,0,0.08)",
             }}
           >
-            {/* Header */}
             <div style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "0 14px",
-              height: 34,
-              background: "var(--bg-base)",
-              borderBottom: "1px solid var(--border)",
+              padding: "0 16px",
+              height: 44,
+              borderBottom: "1px solid var(--border-0)",
               flexShrink: 0,
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span style={{ fontSize: 7, color: "var(--green)", letterSpacing: "0.15em", fontWeight: 700 }}>◈</span>
-                <span style={{ fontSize: 8, color: "var(--text-primary)", letterSpacing: "0.12em", fontWeight: 700 }}>
-                  ACTION LOG
-                </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-0)" }}>Action Log</span>
                 {logs.length > 0 && (
                   <span style={{
-                    fontSize: 8,
-                    padding: "1px 5px",
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-secondary)",
-                  }}>
-                    {logs.length}
-                  </span>
+                    fontSize: 11,
+                    padding: "1px 7px",
+                    borderRadius: 10,
+                    background: "var(--bg-2)",
+                    border: "1px solid var(--border-0)",
+                    color: "var(--text-2)",
+                    fontWeight: 500,
+                  }}>{logs.length}</span>
                 )}
               </div>
               <button
                 onClick={() => setActionLogOpen(false)}
                 style={{
-                  width: 20, height: 20,
+                  width: 28, height: 28,
                   display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 6,
+                  border: "1px solid var(--border-0)",
                   background: "transparent",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-secondary)",
-                  fontSize: 10, cursor: "pointer",
+                  color: "var(--text-2)",
+                  fontSize: 15,
+                  cursor: "pointer",
                 }}
-              >
-                ✕
-              </button>
+              >×</button>
             </div>
 
-            {/* Column headers */}
-            {logs.length > 0 && (
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "42px 1fr 40px",
-                padding: "4px 14px",
-                borderBottom: "1px solid var(--border)",
-                background: "var(--bg-base)",
-                flexShrink: 0,
-              }}>
-                {["STATUS", "ACTION", "TIME"].map(h => (
-                  <span key={h} style={{ fontSize: 7, color: "var(--text-dim)", letterSpacing: "0.12em" }}>{h}</span>
-                ))}
-              </div>
-            )}
-
-            {/* Log entries */}
             <div style={{ flex: 1, overflowY: "auto" }}>
               {logs.length === 0 ? (
-                <div style={{ padding: "24px 14px", textAlign: "center" }}>
-                  <p style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.1em" }}>NO ACTIONS YET</p>
-                  <p style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 4 }}>Triage an alert to see autonomous actions here</p>
+                <div style={{ padding: "32px 16px", textAlign: "center" }}>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)", marginBottom: 4 }}>No actions yet</p>
+                  <p style={{ fontSize: 12, color: "var(--text-2)" }}>Triage an alert to see autonomous actions here</p>
                 </div>
               ) : (
-                logs.map((log) => {
-                  const conf = STATUS_CONFIG[log.status] ?? { color: "var(--text-dim)", label: "—" }
+                logs.map((log, i) => {
+                  const conf = STATUS_CONFIG[log.status] ?? { color: "var(--text-2)", bg: "var(--bg-2)", label: log.status }
                   return (
                     <div key={log.id} style={{
-                      display: "grid",
-                      gridTemplateColumns: "42px 1fr 40px",
-                      padding: "7px 14px",
-                      borderBottom: "1px solid var(--border)",
-                      alignItems: "start",
+                      padding: "10px 16px",
+                      borderBottom: i < logs.length - 1 ? "1px solid var(--border-0)" : "none",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
                     }}>
-                      <div style={{ paddingTop: 1 }}>
-                        <span style={{
-                          fontSize: 7,
-                          padding: "1px 4px",
-                          background: `${conf.color}14`,
-                          border: `1px solid ${conf.color}40`,
-                          color: conf.color,
-                          letterSpacing: "0.08em",
-                          fontWeight: 700,
-                        }}>
-                          {conf.label}
-                        </span>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 10, color: "var(--text-primary)", marginBottom: 3, lineHeight: 1.3 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                        <p style={{ fontSize: 13, color: "var(--text-0)", lineHeight: 1.35, flex: 1 }}>
                           {log.description}
                         </p>
-                        <p style={{ fontSize: 8, color: "var(--text-secondary)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em" }}>
-                          {log.action_type}
-                          {log.risk_level === "high" && (
-                            <span style={{ color: "#FF7A1A", marginLeft: 5 }}>· HIGH-RISK</span>
-                          )}
-                        </p>
-                        {log.result && (
-                          <p style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 2, lineHeight: 1.4 }}>
-                            {log.result.slice(0, 80)}{log.result.length > 80 ? "…" : ""}
-                          </p>
-                        )}
+                        <span style={{
+                          fontSize: 11,
+                          padding: "2px 7px",
+                          borderRadius: 4,
+                          background: conf.bg,
+                          color: conf.color,
+                          fontWeight: 500,
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                        }}>{conf.label}</span>
                       </div>
-                      <div style={{ textAlign: "right", paddingTop: 1 }}>
-                        <span style={{ fontSize: 8, color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 11, color: "var(--text-2)", fontFamily: "'JetBrains Mono', monospace" }}>
+                          {log.action_type}
+                        </span>
+                        {log.risk_level === "high" && (
+                          <span style={{ fontSize: 11, color: "var(--high-text)", fontWeight: 500 }}>· High risk</span>
+                        )}
+                        <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: "auto" }}>
                           {formatTime(log.executed_at)}
                         </span>
                       </div>
+                      {log.result && (
+                        <p style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.4 }}>
+                          {log.result.slice(0, 100)}{log.result.length > 100 ? "…" : ""}
+                        </p>
+                      )}
                     </div>
                   )
                 })

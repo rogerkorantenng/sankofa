@@ -5,10 +5,10 @@ import { useSankofaStore } from "../store"
 import { fetchAlert } from "../api"
 
 const SEVERITY_COLOR: Record<string, string> = {
-  critical: "#EF4444",
-  high: "#F97316",
-  medium: "#EAB308",
-  low: "#6B7280",
+  critical: "#DC2626",
+  high:     "#EA580C",
+  medium:   "#D97706",
+  low:      "#6B7280",
 }
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -147,7 +147,7 @@ export function GraphView() {
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("stroke", "#4B5563")
+      .attr("stroke", "#D1D5DB")
       .attr("stroke-width", 1.5)
       .attr("stroke-dasharray", "4 2")
 
@@ -182,7 +182,7 @@ export function GraphView() {
       .attr("r", (d) => d.nodeType === "ip" ? 12 : 16)
       .attr("fill", (d) => SEVERITY_COLOR[d.severity] || "#6B7280")
       .attr("fill-opacity", 0.9)
-      .attr("stroke", "#111827")
+      .attr("stroke", "#fff")
       .attr("stroke-width", 2)
 
     // Alert count badge for nodes with multiple alerts
@@ -218,9 +218,9 @@ export function GraphView() {
       .text((d) => d.label.length > 18 ? d.label.slice(0, 16) + "…" : d.label)
       .attr("text-anchor", "middle")
       .attr("dy", (d) => d.nodeType === "ip" ? 28 : 32)
-      .attr("fill", "#9CA3AF")
+      .attr("fill", "#6B7280")
       .attr("font-size", "9px")
-      .attr("font-family", "monospace")
+      .attr("font-family", "Inter, sans-serif")
 
     simulation.on("tick", () => {
       link
@@ -249,7 +249,7 @@ export function GraphView() {
   return (
     <div
       ref={containerRef}
-      style={{ position: "absolute", inset: 0, background: "#030712" }}
+      style={{ position: "absolute", inset: 0, background: "var(--bg-1)" }}
     >
       {dimensions.width === 0 ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#4B5563", fontSize: "12px" }}>

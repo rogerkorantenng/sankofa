@@ -3,10 +3,7 @@ import ReactMarkdown from "react-markdown"
 import { streamChat } from "../api"
 import { ThinkingStep } from "./ThinkingStep"
 
-interface Message {
-  role: "user" | "assistant"
-  content: string
-}
+interface Message { role: "user" | "assistant"; content: string }
 
 function parseMessageParts(content: string): Array<{ type: "text" | "search"; value: string }> {
   const parts: Array<{ type: "text" | "search"; value: string }> = []
@@ -28,124 +25,74 @@ export function ChatPanel({ alertId }: { alertId: string }) {
   const [streaming, setStreaming] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    setMessages([])
-    setInput("")
-    setStreaming(false)
-  }, [alertId])
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  useEffect(() => { setMessages([]); setInput(""); setStreaming(false) }, [alertId])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages])
 
   async function send() {
     if (!input.trim() || streaming) return
     const userMsg = input.trim()
     setInput("")
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }])
+    setMessages(prev => [...prev, { role: "user", content: userMsg }])
     setStreaming(true)
-    let assistantContent = ""
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }])
+    let acc = ""
+    setMessages(prev => [...prev, { role: "assistant", content: "" }])
     try {
       for await (const chunk of streamChat(alertId, userMsg)) {
-        assistantContent += chunk
-        setMessages((prev) => [
-          ...prev.slice(0, -1),
-          { role: "assistant", content: assistantContent },
-        ])
+        acc += chunk
+        setMessages(prev => [...prev.slice(0, -1), { role: "assistant", content: acc }])
       }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setStreaming(false)
-    }
+    } catch (e) { console.error(e) }
+    finally { setStreaming(false) }
   }
 
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      height: "100%",
-      background: "var(--bg-base)",
-    }}>
-      {/* Messages */}
-      <div style={{
-        flex: 1,
-        overflowY: "auto",
-        padding: "12px 14px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg-0)" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         {messages.length === 0 && (
-          <div style={{
-            padding: "20px 0",
-            textAlign: "center",
-          }}>
-            <div style={{ fontSize: 20, marginBottom: 6, opacity: 0.15 }}>◈</div>
-            <p style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.1em" }}>
-              ASK THE AI ANALYST
-            </p>
-            <p style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 4, lineHeight: 1.5 }}>
-              What other hosts contacted? Any lateral movement?<br/>
-              Is this a false positive? What's the blast radius?
-            </p>
+          <div style={{ padding: "16px 0", textAlign: "center" }}>
+            <p style={{ fontSize: 12, color: "var(--text-2)" }}>Ask a follow-up question about this alert</p>
           </div>
         )}
         {messages.map((msg, i) => (
-          <div key={i} style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-          }}>
+          <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
             {msg.role === "user" ? (
               <div style={{
                 maxWidth: "80%",
-                padding: "7px 11px",
-                background: "rgba(0,212,255,0.08)",
-                border: "1px solid rgba(0,212,255,0.2)",
-                fontSize: 10,
-                color: "#CDD8E3",
+                padding: "7px 12px",
+                borderRadius: 8,
+                borderBottomRightRadius: 2,
+                background: "var(--blue)",
+                color: "#fff",
+                fontSize: 13,
                 lineHeight: 1.5,
               }}>
                 {msg.content}
               </div>
             ) : (
               <div style={{ maxWidth: "92%", display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  marginBottom: 2,
-                }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                   <div style={{
-                    width: 5,
-                    height: 5,
-                    border: "1px solid var(--accent)",
-                    transform: "rotate(45deg)",
-                  }} />
-                  <span style={{ fontSize: 8, color: "var(--accent)", letterSpacing: "0.1em", fontWeight: 700 }}>
-                    ANALYST
-                  </span>
+                    width: 18, height: 18,
+                    borderRadius: "50%",
+                    background: "var(--blue-bg)",
+                    border: "1px solid var(--blue-border)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 9, color: "var(--blue)", fontWeight: 700,
+                  }}>AI</div>
+                  <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500 }}>Analyst</span>
                 </div>
                 {parseMessageParts(msg.content).map((part, j) =>
                   part.type === "search" ? (
                     <ThinkingStep key={j} query={part.value} />
                   ) : (
-                    <div key={j} style={{
-                      fontSize: 10,
-                      color: "var(--text-primary)",
-                      lineHeight: 1.6,
-                    }}
-                    className="prose-sankofa">
+                    <div key={j} style={{ fontSize: 13, color: "var(--text-0)", lineHeight: 1.6 }}>
                       <ReactMarkdown
                         components={{
-                          p: ({children}) => <p style={{ margin: "0 0 6px", lineHeight: 1.6 }}>{children}</p>,
-                          strong: ({children}) => <strong style={{ color: "#E8F0F8", fontWeight: 600 }}>{children}</strong>,
-                          ul: ({children}) => <ul style={{ margin: "4px 0 6px 14px", padding: 0 }}>{children}</ul>,
+                          p: ({children}) => <p style={{ margin: "0 0 6px" }}>{children}</p>,
+                          strong: ({children}) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                          ul: ({children}) => <ul style={{ margin: "4px 0 6px 16px" }}>{children}</ul>,
                           li: ({children}) => <li style={{ marginBottom: 2 }}>{children}</li>,
-                          code: ({children}) => <code style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", padding: "1px 4px", color: "var(--accent)", fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}>{children}</code>,
-                          h3: ({children}) => <h3 style={{ fontSize: 11, fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, color: "#E8F0F8", margin: "8px 0 4px", letterSpacing: "0.05em" }}>{children}</h3>,
+                          code: ({children}) => <code style={{ background: "var(--bg-2)", border: "1px solid var(--border-0)", borderRadius: 3, padding: "1px 5px", fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "var(--blue-text)" }}>{children}</code>,
                         }}
                       >
                         {part.value}
@@ -154,13 +101,7 @@ export function ChatPanel({ alertId }: { alertId: string }) {
                   )
                 )}
                 {streaming && i === messages.length - 1 && (
-                  <span style={{
-                    display: "inline-block",
-                    width: 6,
-                    height: 12,
-                    background: "var(--accent)",
-                    animation: "blink 1s step-end infinite",
-                  }} />
+                  <div style={{ width: 8, height: 14, background: "var(--blue)", borderRadius: 1, animation: "pulse-dot 0.8s ease-in-out infinite" }} />
                 )}
               </div>
             )}
@@ -169,52 +110,49 @@ export function ChatPanel({ alertId }: { alertId: string }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div style={{
         display: "flex",
-        gap: 6,
-        padding: "8px 14px",
-        borderTop: "1px solid var(--border)",
-        background: "var(--bg-panel)",
+        gap: 8,
+        padding: "10px 16px",
+        borderTop: "1px solid var(--border-0)",
         flexShrink: 0,
       }}>
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") send().catch(console.error) }}
-          placeholder="Query the analyst..."
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") send().catch(console.error) }}
+          placeholder="Ask about this alert…"
           disabled={streaming}
           style={{
             flex: 1,
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border-bright)",
-            color: "var(--text-primary)",
-            fontSize: 10,
-            fontFamily: "'JetBrains Mono', monospace",
-            padding: "6px 10px",
+            padding: "7px 12px",
+            borderRadius: 6,
+            border: "1px solid var(--border-1)",
+            background: "var(--bg-0)",
+            color: "var(--text-0)",
+            fontSize: 13,
             outline: "none",
             transition: "border-color 0.12s",
           }}
-          onFocus={e => { (e.target as HTMLElement).style.borderColor = "var(--accent)" }}
-          onBlur={e => { (e.target as HTMLElement).style.borderColor = "var(--border-bright)" }}
+          onFocus={e => { (e.target as HTMLElement).style.borderColor = "var(--blue)" }}
+          onBlur={e => { (e.target as HTMLElement).style.borderColor = "var(--border-1)" }}
         />
         <button
           onClick={() => send().catch(console.error)}
           disabled={streaming || !input.trim()}
           style={{
-            padding: "0 14px",
-            background: streaming || !input.trim() ? "var(--bg-elevated)" : "rgba(0,212,255,0.1)",
-            border: `1px solid ${streaming || !input.trim() ? "var(--border)" : "rgba(0,212,255,0.3)"}`,
-            color: streaming || !input.trim() ? "var(--text-dim)" : "var(--accent)",
-            fontSize: 9,
-            fontFamily: "'JetBrains Mono', monospace",
-            fontWeight: 700,
-            letterSpacing: "0.1em",
+            padding: "7px 16px",
+            borderRadius: 6,
+            border: "none",
+            background: streaming || !input.trim() ? "var(--bg-2)" : "var(--blue)",
+            color: streaming || !input.trim() ? "var(--text-2)" : "#fff",
+            fontSize: 13,
+            fontWeight: 500,
             cursor: streaming || !input.trim() ? "not-allowed" : "pointer",
-            transition: "all 0.12s",
+            transition: "all 0.1s",
           }}
         >
-          {streaming ? "···" : "SEND"}
+          Send
         </button>
       </div>
     </div>

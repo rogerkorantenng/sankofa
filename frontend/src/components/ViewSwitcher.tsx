@@ -6,29 +6,29 @@ export function ViewSwitcher() {
   return (
     <div style={{
       display: "flex",
-      border: "1px solid var(--border)",
-      overflow: "hidden",
+      background: "var(--bg-2)",
+      borderRadius: 6,
+      padding: 2,
+      gap: 2,
     }}>
       {(["graph", "timeline"] as const).map((mode) => (
         <button
           key={mode}
           onClick={() => setViewMode(mode)}
           style={{
-            padding: "3px 10px",
-            fontSize: 8,
-            fontFamily: "'JetBrains Mono', monospace",
-            fontWeight: viewMode === mode ? 700 : 400,
-            letterSpacing: "0.12em",
-            background: viewMode === mode ? "rgba(0,212,255,0.12)" : "transparent",
-            color: viewMode === mode ? "var(--accent)" : "var(--text-secondary)",
-            borderRight: mode === "graph" ? "1px solid var(--border)" : "none",
+            padding: "4px 12px",
+            borderRadius: 4,
+            border: "none",
+            background: viewMode === mode ? "var(--bg-0)" : "transparent",
+            boxShadow: viewMode === mode ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+            color: viewMode === mode ? "var(--text-0)" : "var(--text-2)",
+            fontSize: 12,
+            fontWeight: viewMode === mode ? 500 : 400,
             cursor: "pointer",
             transition: "all 0.12s",
           }}
-          onMouseEnter={e => { if (viewMode !== mode) (e.currentTarget as HTMLElement).style.color = "var(--text-primary)" }}
-          onMouseLeave={e => { if (viewMode !== mode) (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)" }}
         >
-          {mode === "graph" ? "⬡ GRAPH" : "▶ TIMELINE"}
+          {mode === "graph" ? "Graph" : "Timeline"}
         </button>
       ))}
     </div>

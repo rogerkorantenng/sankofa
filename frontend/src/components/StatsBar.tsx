@@ -1,26 +1,13 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useSankofaStore } from "../store"
 import { fetchStats } from "../api"
 
-const SEV_CONFIG = [
-  { key: "critical" as const, color: "#FF2D3F", label: "CRIT" },
-  { key: "high"     as const, color: "#FF7A1A", label: "HIGH" },
-  { key: "medium"   as const, color: "#FFB800", label:  "MED" },
-  { key: "low"      as const, color: "#2D5A7A", label:  "LOW" },
+const SEV: Array<{ key: "critical" | "high" | "medium" | "low"; color: string; label: string }> = [
+  { key: "critical", color: "var(--critical)",  label: "Critical" },
+  { key: "high",     color: "var(--high)",      label: "High"     },
+  { key: "medium",   color: "var(--medium)",    label: "Medium"   },
+  { key: "low",      color: "var(--low)",       label: "Low"      },
 ]
-
-function LiveClock() {
-  const [t, setT] = useState(new Date())
-  useEffect(() => {
-    const id = setInterval(() => setT(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [])
-  return (
-    <span style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.08em" }}>
-      {t.toISOString().replace("T", " ").slice(0, 19)}Z
-    </span>
-  )
-}
 
 export function StatsBar() {
   const { stats, setStats, wsConnected } = useSankofaStore()
@@ -33,100 +20,50 @@ export function StatsBar() {
   }, [setStats])
 
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      padding: "0 14px",
-      height: 28,
-      background: "var(--bg-base)",
-      borderBottom: "1px solid var(--border)",
-      flexShrink: 0,
-      gap: 0,
-      overflow: "hidden",
-    }}>
-      {/* Live indicator */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        paddingRight: 12,
-        marginRight: 12,
-        borderRight: "1px solid var(--border)",
-        flexShrink: 0,
-      }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {/* Live dot */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
         <div style={{
-          width: 5,
-          height: 5,
+          width: 7,
+          height: 7,
           borderRadius: "50%",
-          background: wsConnected ? "var(--green)" : "#FF2D3F",
-          boxShadow: wsConnected ? "0 0 6px var(--green)" : "0 0 6px #FF2D3F",
+          background: wsConnected ? "var(--green)" : "var(--critical)",
+          animation: wsConnected ? "pulse-dot 2s ease-in-out infinite" : "none",
         }} />
-        <span style={{ fontSize: 8, color: wsConnected ? "var(--green)" : "#FF2D3F", letterSpacing: "0.12em", fontWeight: 700 }}>
-          {wsConnected ? "LIVE" : "OFFLINE"}
+        <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500 }}>
+          {wsConnected ? "Live" : "Offline"}
         </span>
       </div>
 
-      {/* Severity counts */}
       {stats && (
         <>
-          <div style={{ display: "flex", gap: 3, marginRight: 12, flexShrink: 0 }}>
-            {SEV_CONFIG.map(({ key, color, label }) => (
-              <div key={key} style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "0 7px",
-                height: 16,
-                background: stats[key] > 0 ? `${color}14` : "transparent",
-                border: `1px solid ${stats[key] > 0 ? color + "40" : "var(--border)"}`,
-              }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: stats[key] > 0 ? color : "var(--text-dim)" }}>
-                  {stats[key]}
-                </span>
-                <span style={{ fontSize: 8, color: stats[key] > 0 ? color : "var(--text-dim)", letterSpacing: "0.1em", opacity: 0.8 }}>
-                  {label}
-                </span>
-              </div>
+          <div style={{ width: 1, height: 16, background: "var(--border-0)" }} />
+          <div style={{ display: "flex", gap: 10 }}>
+            {SEV.filter(s => stats[s.key] > 0).map(s => (
+              <span key={s.key} style={{ fontSize: 12, color: "var(--text-1)", fontWeight: 500 }}>
+                <span style={{ color: s.color, fontWeight: 600 }}>{stats[s.key]}</span>
+                {" "}{s.label}
+              </span>
             ))}
           </div>
-
-          <div style={{ width: 1, height: 14, background: "var(--border)", flexShrink: 0, marginRight: 12 }} />
-
-          <span style={{ fontSize: 9, color: "var(--text-secondary)", flexShrink: 0, marginRight: 12 }}>
-            CONF{" "}
-            <span style={{ color: "var(--accent)", fontWeight: 700 }}>{stats.avg_confidence}%</span>
-          </span>
-
-          <div style={{ width: 1, height: 14, background: "var(--border)", flexShrink: 0, marginRight: 12 }} />
-
-          <span style={{ fontSize: 9, color: "var(--text-secondary)", flexShrink: 0, marginRight: 10 }}>
-            <span style={{ color: "var(--green)", fontWeight: 700 }}>{stats.actions_executed}</span>
-            {" EXECUTED"}
-          </span>
-
           {stats.actions_pending > 0 && (
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "0 8px",
-              height: 16,
-              background: "rgba(255,184,0,0.08)",
-              border: "1px solid rgba(255,184,0,0.3)",
-              flexShrink: 0,
-            }}>
-              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#FFB800", display: "inline-block" }} />
-              <span style={{ fontSize: 9, color: "#FFB800", fontWeight: 700, letterSpacing: "0.06em" }}>
-                {stats.actions_pending} PENDING
+            <>
+              <div style={{ width: 1, height: 16, background: "var(--border-0)" }} />
+              <span style={{
+                fontSize: 12,
+                fontWeight: 500,
+                padding: "2px 8px",
+                borderRadius: 4,
+                background: "var(--medium-bg)",
+                color: "var(--medium-text)",
+                border: "1px solid var(--medium-border)",
+              }}>
+                {stats.actions_pending} pending approval
               </span>
-            </div>
+            </>
           )}
         </>
       )}
-
-      <div style={{ marginLeft: "auto", flexShrink: 0 }}>
-        <LiveClock />
-      </div>
     </div>
   )
 }
