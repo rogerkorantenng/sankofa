@@ -5,3 +5,5 @@ frontend/dist/
 .env
 __pycache__/
 *.pyc
+package_app.sh
+DEVPOST_SUBMISSION.md
