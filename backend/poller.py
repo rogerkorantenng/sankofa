@@ -27,6 +27,11 @@ async def poll_and_triage() -> None:
     async with aiosqlite.connect(settings.db_path) as db:
         await init_db(db)
         for raw in raw_alerts:
+            title = raw.get("title", "").strip()
+            # Skip system/internal alerts with no meaningful title
+            if not title or title == "-" or title.startswith("splunk_") or title.lower().startswith("internal"):
+                continue
+
             alert_id = str(uuid.uuid5(
                 uuid.NAMESPACE_URL,
                 raw.get("sid", raw.get("title", str(raw)))

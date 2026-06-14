@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { motion } from "framer-motion"
 import { useSankofaStore } from "../store"
 import { AlertRow } from "./AlertRow"
-import { fetchAlert, seedAlerts, seedCampaign } from "../api"
+import { fetchAlert, seedCampaign } from "../api"
 import type { Alert } from "../types"
 
 export function AlertQueue() {
@@ -106,25 +106,6 @@ export function AlertQueue() {
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--blue-bg)" }}
           >
             Load Campaign
-          </button>
-          <button
-            onClick={() => seedAlerts().catch(console.error)}
-            style={{
-              flex: 1,
-              padding: "6px 0",
-              borderRadius: 6,
-              border: "1px solid var(--border-0)",
-              background: "var(--bg-0)",
-              color: "var(--text-1)",
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-              transition: "all 0.1s",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)" }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-0)" }}
-          >
-            Seed Demo
           </button>
         </div>
       </div>
