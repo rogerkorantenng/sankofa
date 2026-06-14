@@ -13,31 +13,26 @@ import "reactflow/dist/style.css"
 import { createRunbook } from "../api"
 
 const ACTION_TYPES = [
-  { value: "add_to_watchlist", label: "Add to Watchlist", risk: "low" },
-  { value: "create_splunk_alert", label: "Create Splunk Alert", risk: "low" },
-  { value: "slack_notify", label: "Notify Slack", risk: "low" },
-  { value: "block_ip", label: "Block IP", risk: "high" },
-  { value: "isolate_host", label: "Isolate Host", risk: "high" },
+  { value: "add_to_watchlist",  label: "Add to Watchlist",    risk: "low"  },
+  { value: "create_splunk_alert", label: "Create Splunk Alert", risk: "low"  },
+  { value: "slack_notify",      label: "Notify Slack",        risk: "low"  },
+  { value: "block_ip",          label: "Block IP",            risk: "high" },
+  { value: "isolate_host",      label: "Isolate Host",        risk: "high" },
 ]
 
-const NODE_COLORS = {
-  trigger: "#166534",
-  action_low: "#1e3a5f",
-  action_high: "#7c2d12",
+const NODE_STYLES = {
+  trigger: { background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1D4ED8", fontSize: "12px", fontFamily: "Inter, sans-serif", borderRadius: "6px", padding: "8px 14px" },
+  low:     { background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#15803D", fontSize: "12px", fontFamily: "Inter, sans-serif", borderRadius: "6px", padding: "8px 14px" },
+  high:    { background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: "12px", fontFamily: "Inter, sans-serif", borderRadius: "6px", padding: "8px 14px" },
 }
 
 const initialNodes: Node[] = [
   {
     id: "trigger-1",
     type: "default",
-    position: { x: 200, y: 50 },
-    data: { label: "🎯 Alert Trigger\nTA0006 + high/critical" },
-    style: {
-      background: NODE_COLORS.trigger, color: "white",
-      border: "1px solid #166534", fontSize: "11px",
-      fontFamily: "monospace", borderRadius: "6px",
-      padding: "8px 12px", whiteSpace: "pre-line" as const,
-    },
+    position: { x: 250, y: 40 },
+    data: { label: "🎯 Alert Trigger" },
+    style: NODE_STYLES.trigger,
   },
 ]
 
@@ -51,36 +46,31 @@ export function RunbookBuilder() {
   const [saved, setSaved] = useState(false)
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => setEdges(eds => addEdge(params, eds)),
     [setEdges]
   )
 
   function addActionNode(actionType: string, risk: string) {
-    const action = ACTION_TYPES.find((a) => a.value === actionType)
+    const action = ACTION_TYPES.find(a => a.value === actionType)
     const id = `action-${Date.now()}`
-    const color = risk === "high" ? NODE_COLORS.action_high : NODE_COLORS.action_low
-    setNodes((nds) => [
+    setNodes(nds => [
       ...nds,
       {
         id,
         type: "default",
-        position: { x: 100 + Math.random() * 300, y: 150 + nds.length * 80 },
-        data: { label: `${risk === "high" ? "🔒" : "⚡"} ${action?.label ?? actionType}` },
-        style: {
-          background: color, color: "white",
-          border: `1px solid ${color}`, fontSize: "11px",
-          fontFamily: "monospace", borderRadius: "6px", padding: "8px 12px",
-        },
+        position: { x: 100 + Math.random() * 300, y: 150 + nds.length * 90 },
+        data: { label: action?.label ?? actionType },
+        style: risk === "high" ? NODE_STYLES.high : NODE_STYLES.low,
       },
     ])
   }
 
   async function handleSave() {
     setSaving(true)
-    const actionNodes = nodes.filter((n) => n.id !== "trigger-1")
+    const actionNodes = nodes.filter(n => n.id !== "trigger-1")
     const steps = actionNodes.map((n, i) => {
-      const label = String(n.data.label).replace(/^[⚡🔒] /, "")
-      const actionType = ACTION_TYPES.find((a) => a.label === label)
+      const label = String(n.data.label)
+      const actionType = ACTION_TYPES.find(a => a.label === label)
       return {
         id: `step-${i + 1}`,
         type: "action",
@@ -106,72 +96,88 @@ export function RunbookBuilder() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 font-mono flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-700">
-        <div className="flex items-center gap-4">
-          <a href="/runbooks" className="text-xs text-gray-500 hover:text-white">← Runbooks</a>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-1)", fontFamily: "Inter, sans-serif" }}>
+      {/* Nav */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 20px", height: 52,
+        background: "var(--bg-0)", borderBottom: "1px solid var(--border-0)",
+        flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 6, background: "var(--blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" }}>S</div>
+          <a href="/runbooks" style={{ fontSize: 13, color: "var(--text-1)", textDecoration: "none" }}>Runbooks</a>
+          <span style={{ color: "var(--text-3)" }}>/</span>
           <input
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="bg-transparent text-white text-sm font-semibold border-b border-gray-600 focus:border-blue-400 outline-none px-1"
+            onChange={e => setName(e.target.value)}
+            style={{
+              background: "transparent", border: "none", fontSize: 14, fontWeight: 600,
+              color: "var(--text-0)", outline: "none", minWidth: 180,
+            }}
           />
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span>Trigger:</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Trigger config */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 12px", borderLeft: "1px solid var(--border-0)", borderRight: "1px solid var(--border-0)" }}>
+            <span style={{ fontSize: 12, color: "var(--text-2)" }}>Trigger:</span>
             <input
               value={mitreTactic}
-              onChange={(e) => setMitreTactic(e.target.value)}
-              className="bg-gray-800 text-white px-2 py-1 rounded w-24 text-xs"
-              placeholder="TA0006"
+              onChange={e => setMitreTactic(e.target.value)}
+              style={{ width: 80, padding: "4px 8px", border: "1px solid var(--border-0)", borderRadius: 5, fontSize: 12, background: "var(--bg-1)", color: "var(--text-0)", outline: "none" }}
             />
-            <span>Severity:</span>
-            {["low", "medium", "high", "critical"].map((s) => (
-              <label key={s} className="flex items-center gap-1 cursor-pointer">
+            <span style={{ fontSize: 12, color: "var(--text-2)" }}>Severity:</span>
+            {["low", "medium", "high", "critical"].map(s => (
+              <label key={s} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
                 <input
                   type="checkbox"
                   checked={severities.includes(s)}
-                  onChange={(e) => {
-                    setSeverities((prev) =>
-                      e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)
-                    )
-                  }}
+                  onChange={e => setSeverities(prev => e.target.checked ? [...prev, s] : prev.filter(x => x !== s))}
                 />
-                <span>{s}</span>
+                <span style={{ fontSize: 12, color: "var(--text-1)", textTransform: "capitalize" }}>{s}</span>
               </label>
             ))}
           </div>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-3 py-1.5 rounded transition-colors"
+            style={{
+              padding: "7px 16px", borderRadius: 6, border: "none",
+              background: saved ? "var(--green)" : "var(--blue)",
+              color: "#fff", fontSize: 13, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer",
+              opacity: saving ? 0.7 : 1, transition: "all 0.15s",
+            }}
           >
-            {saving ? "Saving..." : saved ? "✓ Saved" : "Save Runbook"}
+            {saving ? "Saving…" : saved ? "✓ Saved" : "Save Runbook"}
           </button>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 border-b border-gray-700 flex-wrap">
-        <span className="text-xs text-gray-500">Add step:</span>
-        {ACTION_TYPES.map((a) => (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "8px 20px", borderBottom: "1px solid var(--border-0)",
+        background: "var(--bg-0)", flexShrink: 0, flexWrap: "wrap",
+      }}>
+        <span style={{ fontSize: 12, color: "var(--text-2)", marginRight: 4 }}>Add step:</span>
+        {ACTION_TYPES.map(a => (
           <button
             key={a.value}
             onClick={() => addActionNode(a.value, a.risk)}
-            className={`text-xs px-2 py-1 rounded border transition-colors ${
-              a.risk === "high"
-                ? "border-orange-700 text-orange-300 hover:bg-orange-900/30"
-                : "border-gray-600 text-gray-300 hover:bg-gray-800"
-            }`}
+            style={{
+              padding: "4px 12px", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.1s",
+              border: `1px solid ${a.risk === "high" ? "var(--high-border)" : "var(--border-0)"}`,
+              background: a.risk === "high" ? "var(--high-bg)" : "var(--bg-1)",
+              color: a.risk === "high" ? "var(--high-text)" : "var(--text-1)",
+            }}
           >
-            {a.risk === "high" ? "🔒" : "⚡"} {a.label}
+            {a.risk === "high" ? "⚠ " : ""}{a.label}
           </button>
         ))}
       </div>
 
       {/* Canvas */}
-      <div className="flex-1">
+      <div style={{ flex: 1 }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -180,7 +186,7 @@ export function RunbookBuilder() {
           onConnect={onConnect}
           fitView
         >
-          <Background color="#374151" gap={20} />
+          <Background color="#E5E7EB" gap={20} />
           <Controls />
         </ReactFlow>
       </div>
