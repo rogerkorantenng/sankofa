@@ -203,11 +203,7 @@ npm run dev
 
 Open **http://localhost:5173**
 
-### 5. Load demo data
-
-Click **Load Campaign** in the dashboard to seed a realistic 5-alert attack campaign (port scan → brute force → credential dumping → lateral movement → C2 beacon) and watch the full triage pipeline run live.
-
-### 6. Slack interactive buttons (optional)
+### 5. Slack interactive buttons (optional)
 
 To enable Approve/Dismiss from Slack:
 
@@ -228,19 +224,6 @@ Install `sankofa.spl` via **Apps → Manage Apps → Install from file** to add:
 
 ---
 
-## Demo Campaign
-
-The `seed/campaign_alerts.json` file contains a connected 5-alert attack narrative:
-
-| Step | Alert | Severity |
-|---|---|---|
-| 1 | Reconnaissance — Port Scan from External IP | Low |
-| 2 | Credential Access — Brute Force Against Administrator | Medium |
-| 3 | Credential Dumping — LSASS Memory Access on Domain Controller | **Critical** |
-| 4 | Lateral Movement — SMB Connection to Finance Server | High |
-| 5 | C2 Beacon — Suspicious Outbound HTTPS to Rare External IP | High |
-
----
 
 ## Project Structure
 
@@ -293,6 +276,3 @@ sankofa/
 
 ---
 
-## License
-
-Apache 2.0 — see [LICENSE](LICENSE)
