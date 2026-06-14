@@ -1,4 +1,4 @@
-import type { AlertDetail, ActionDecision } from "./types"
+import type { AlertDetail, ActionDecision, ActionLogEntry, Runbook, DashboardStats } from "./types"
 
 export async function fetchAlert(id: string): Promise<AlertDetail> {
   const res = await fetch(`/alerts/${id}`)
@@ -72,4 +72,41 @@ export async function* streamChat(
       }
     }
   }
+}
+
+export async function fetchStats(): Promise<DashboardStats> {
+  const res = await fetch("/stats")
+  if (!res.ok) throw new Error("Failed to fetch stats")
+  return res.json()
+}
+
+export async function fetchActions(): Promise<ActionLogEntry[]> {
+  const res = await fetch("/actions")
+  if (!res.ok) throw new Error("Failed to fetch actions")
+  return res.json()
+}
+
+export async function fetchRunbooks(): Promise<Runbook[]> {
+  const res = await fetch("/runbooks")
+  if (!res.ok) throw new Error("Failed to fetch runbooks")
+  return res.json()
+}
+
+export async function createRunbook(data: {
+  name: string
+  trigger_conditions: Record<string, unknown>
+  steps: unknown[]
+}): Promise<{ id: string }> {
+  const res = await fetch("/runbooks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("Failed to create runbook")
+  return res.json()
+}
+
+export async function deleteRunbook(id: string): Promise<void> {
+  const res = await fetch(`/runbooks/${id}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Failed to delete runbook")
 }

@@ -33,6 +33,12 @@ async def get_alert(alert_id: str):
                     row[field] = json.loads(row[field])
                 except Exception:
                     pass
+        # Attach enrichment data if available
+        if row.get("source_ip"):
+            from database import get_threat_intel
+            row["threat_intel"] = await get_threat_intel(db, row["source_ip"])
+        else:
+            row["threat_intel"] = None
         return row
 
 
