@@ -54,6 +54,54 @@ async def init_db(db: aiosqlite.Connection) -> None:
             decided_at TEXT
         )
     """)
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS threat_intel (
+            ip TEXT PRIMARY KEY,
+            reputation_score INTEGER NOT NULL DEFAULT 0,
+            abuse_reports INTEGER NOT NULL DEFAULT 0,
+            country TEXT NOT NULL DEFAULT '',
+            asn TEXT NOT NULL DEFAULT '',
+            known_malware TEXT NOT NULL DEFAULT '[]',
+            is_tor_exit INTEGER NOT NULL DEFAULT 0,
+            last_seen TEXT NOT NULL DEFAULT '',
+            sources TEXT NOT NULL DEFAULT '[]',
+            cached_at TEXT NOT NULL
+        )
+    """)
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS action_logs (
+            id TEXT PRIMARY KEY,
+            alert_id TEXT NOT NULL,
+            runbook_id TEXT,
+            action_type TEXT NOT NULL,
+            description TEXT NOT NULL,
+            risk_level TEXT NOT NULL DEFAULT 'low',
+            status TEXT NOT NULL DEFAULT 'executed',
+            result TEXT,
+            executed_at TEXT
+        )
+    """)
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS feedback_entries (
+            id TEXT PRIMARY KEY,
+            alert_id TEXT NOT NULL,
+            ip TEXT,
+            host TEXT,
+            pattern TEXT NOT NULL,
+            analyst_action TEXT NOT NULL,
+            outcome TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS runbooks (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            trigger_conditions TEXT NOT NULL DEFAULT '{}',
+            steps TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL
+        )
+    """)
     await db.commit()
 
 
@@ -155,3 +203,155 @@ async def get_chat_messages(db: aiosqlite.Connection, alert_id: str) -> list[dic
         rows = await cursor.fetchall()
         cols = [d[0] for d in cursor.description]
         return [dict(zip(cols, row)) for row in rows]
+
+
+# --- v2 helpers ---
+
+async def save_threat_intel(db: aiosqlite.Connection, ti) -> None:
+    await db.execute(
+        """INSERT OR REPLACE INTO threat_intel
+           (ip, reputation_score, abuse_reports, country, asn, known_malware,
+            is_tor_exit, last_seen, sources, cached_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (ti.ip, ti.reputation_score, ti.abuse_reports, ti.country, ti.asn,
+         json.dumps(ti.known_malware), int(ti.is_tor_exit), ti.last_seen,
+         json.dumps(ti.sources), ti.cached_at.isoformat()),
+    )
+    await db.commit()
+
+
+async def get_threat_intel(db: aiosqlite.Connection, ip: str) -> dict | None:
+    async with db.execute("SELECT * FROM threat_intel WHERE ip = ?", (ip,)) as cursor:
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        cols = [d[0] for d in cursor.description]
+        result = dict(zip(cols, row))
+        result["known_malware"] = json.loads(result["known_malware"])
+        result["sources"] = json.loads(result["sources"])
+        return result
+
+
+async def save_action_log(db: aiosqlite.Connection, log) -> None:
+    await db.execute(
+        """INSERT OR REPLACE INTO action_logs
+           (id, alert_id, runbook_id, action_type, description, risk_level,
+            status, result, executed_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (log.id, log.alert_id, log.runbook_id, log.action_type, log.description,
+         log.risk_level, log.status, log.result,
+         log.executed_at.isoformat() if log.executed_at else None),
+    )
+    await db.commit()
+
+
+async def get_action_logs(db: aiosqlite.Connection, alert_id: str | None = None) -> list[dict]:
+    if alert_id:
+        query = "SELECT * FROM action_logs WHERE alert_id = ? ORDER BY executed_at DESC"
+        params: tuple = (alert_id,)
+    else:
+        query = "SELECT * FROM action_logs ORDER BY executed_at DESC"
+        params = ()
+    async with db.execute(query, params) as cursor:
+        rows = await cursor.fetchall()
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in rows]
+
+
+async def update_action_log_status(db: aiosqlite.Connection, log_id: str, status: str, result: str | None = None) -> None:
+    await db.execute(
+        "UPDATE action_logs SET status = ?, result = ? WHERE id = ?",
+        (status, result, log_id)
+    )
+    await db.commit()
+
+
+async def save_feedback(db: aiosqlite.Connection, entry) -> None:
+    await db.execute(
+        """INSERT INTO feedback_entries
+           (id, alert_id, ip, host, pattern, analyst_action, outcome, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (entry.id, entry.alert_id, entry.ip, entry.host, entry.pattern,
+         entry.analyst_action, entry.outcome, entry.created_at.isoformat()),
+    )
+    await db.commit()
+
+
+async def get_feedback_for_pattern(db: aiosqlite.Connection, pattern: str, limit: int = 10) -> list[dict]:
+    async with db.execute(
+        "SELECT * FROM feedback_entries WHERE pattern = ? ORDER BY created_at DESC LIMIT ?",
+        (pattern, limit)
+    ) as cursor:
+        rows = await cursor.fetchall()
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in rows]
+
+
+async def save_runbook(db: aiosqlite.Connection, runbook) -> None:
+    await db.execute(
+        """INSERT OR REPLACE INTO runbooks (id, name, trigger_conditions, steps, created_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (runbook.id, runbook.name, json.dumps(runbook.trigger_conditions),
+         json.dumps([s.model_dump() for s in runbook.steps]),
+         runbook.created_at.isoformat()),
+    )
+    await db.commit()
+
+
+async def get_runbooks(db: aiosqlite.Connection) -> list[dict]:
+    async with db.execute("SELECT * FROM runbooks ORDER BY created_at DESC") as cursor:
+        rows = await cursor.fetchall()
+        cols = [d[0] for d in cursor.description]
+        results = []
+        for row in rows:
+            r = dict(zip(cols, row))
+            r["trigger_conditions"] = json.loads(r["trigger_conditions"])
+            r["steps"] = json.loads(r["steps"])
+            results.append(r)
+        return results
+
+
+async def get_runbook(db: aiosqlite.Connection, runbook_id: str) -> dict | None:
+    async with db.execute("SELECT * FROM runbooks WHERE id = ?", (runbook_id,)) as cursor:
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        cols = [d[0] for d in cursor.description]
+        r = dict(zip(cols, row))
+        r["trigger_conditions"] = json.loads(r["trigger_conditions"])
+        r["steps"] = json.loads(r["steps"])
+        return r
+
+
+async def get_stats(db: aiosqlite.Connection) -> dict:
+    async with db.execute(
+        "SELECT severity, COUNT(*) as cnt FROM alerts GROUP BY severity"
+    ) as cursor:
+        severity_rows = await cursor.fetchall()
+    severity_counts = {row[0]: row[1] for row in severity_rows}
+
+    async with db.execute(
+        "SELECT AVG(confidence) FROM investigation_reports WHERE confidence > 0"
+    ) as cursor:
+        avg_row = await cursor.fetchone()
+    avg_confidence = round(avg_row[0] or 0)
+
+    async with db.execute(
+        "SELECT COUNT(*) FROM action_logs WHERE status = 'executed'"
+    ) as cursor:
+        executed_row = await cursor.fetchone()
+
+    async with db.execute(
+        "SELECT COUNT(*) FROM action_logs WHERE status = 'pending_approval'"
+    ) as cursor:
+        pending_row = await cursor.fetchone()
+
+    return {
+        "critical": severity_counts.get("critical", 0),
+        "high": severity_counts.get("high", 0),
+        "medium": severity_counts.get("medium", 0),
+        "low": severity_counts.get("low", 0),
+        "avg_confidence": avg_confidence,
+        "actions_executed": executed_row[0] if executed_row else 0,
+        "actions_pending": pending_row[0] if pending_row else 0,
+    }
