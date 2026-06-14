@@ -8,7 +8,7 @@ Built for the **Splunk Agentic Ops Hackathon** · Security Track · by Roger
 
 ---
 
-![Architecture](architecture.svg)
+![Architecture](Architecture.png)
 
 ---
 
