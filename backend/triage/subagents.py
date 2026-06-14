@@ -62,9 +62,21 @@ async def _mcp_generate_and_run(
 def _parse_agent_response(text: str) -> dict:
     """Parse JSON from agent response, falling back to plain text."""
     stripped = text.strip()
-    if stripped.startswith("{"):
+    # Strip markdown code fences: ```json ... ``` or ``` ... ```
+    if stripped.startswith("```"):
+        lines = stripped.split("\n")
+        # Drop first line (```json or ```) and last ``` line
+        inner = "\n".join(
+            line for line in lines[1:]
+            if line.strip() != "```"
+        ).strip()
+        stripped = inner
+    # Extract first JSON object if present anywhere in the string
+    start = stripped.find("{")
+    end = stripped.rfind("}") + 1
+    if start != -1 and end > start:
         try:
-            return json.loads(stripped)
+            return json.loads(stripped[start:end])
         except json.JSONDecodeError:
             pass
     return {"findings": text, "indicators": []}
