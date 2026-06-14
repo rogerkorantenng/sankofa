@@ -1,0 +1,75 @@
+{
+  "visualizations": {
+    "alert_count": {
+      "type": "splunk.singlevalue",
+      "dataSources": { "primary": "alert_count_ds" },
+      "options": { "majorColor": "#EF4444", "majorFontSize": 48 },
+      "title": "Active Alerts"
+    },
+    "severity_chart": {
+      "type": "splunk.bar",
+      "dataSources": { "primary": "severity_ds" },
+      "options": {
+        "seriesColors": ["#EF4444", "#F97316", "#EAB308", "#6B7280"],
+        "xAxisTitleText": "Severity",
+        "yAxisTitleText": "Count"
+      },
+      "title": "Alerts by Severity"
+    },
+    "mitre_chart": {
+      "type": "splunk.bar",
+      "dataSources": { "primary": "mitre_ds" },
+      "options": { "xAxisTitleText": "MITRE Tactic" },
+      "title": "Alerts by MITRE Tactic"
+    },
+    "alert_table": {
+      "type": "splunk.table",
+      "dataSources": { "primary": "alert_table_ds" },
+      "title": "Alert Queue — Sorted by AI Risk Score"
+    }
+  },
+  "dataSources": {
+    "alert_count_ds": {
+      "type": "ds.search",
+      "options": {
+        "query": "| rest /services/alerts/fired_alerts | stats count",
+        "queryParameters": { "earliest": "-24h", "latest": "now" }
+      }
+    },
+    "severity_ds": {
+      "type": "ds.search",
+      "options": {
+        "query": "| rest /services/alerts/fired_alerts | stats count by severity | eval severity=case(severity=1,\"Critical\",severity=2,\"High\",severity=3,\"Medium\",true(),\"Low\")",
+        "queryParameters": { "earliest": "-24h", "latest": "now" }
+      }
+    },
+    "mitre_ds": {
+      "type": "ds.search",
+      "options": {
+        "query": "| rest /services/alerts/fired_alerts | stats count by savedsearch_name | rename savedsearch_name as alert",
+        "queryParameters": { "earliest": "-24h", "latest": "now" }
+      }
+    },
+    "alert_table_ds": {
+      "type": "ds.search",
+      "options": {
+        "query": "| rest /services/alerts/fired_alerts | table title, severity, trigger_time, sid | sort -severity",
+        "queryParameters": { "earliest": "-24h", "latest": "now" }
+      }
+    }
+  },
+  "layout": {
+    "type": "grid",
+    "options": {},
+    "structure": [
+      { "item": "alert_count", "type": "block", "position": {"x": 0, "y": 0, "w": 200, "h": 150} },
+      { "item": "severity_chart", "type": "block", "position": {"x": 200, "y": 0, "w": 400, "h": 150} },
+      { "item": "mitre_chart", "type": "block", "position": {"x": 600, "y": 0, "w": 400, "h": 150} },
+      { "item": "alert_table", "type": "block", "position": {"x": 0, "y": 150, "w": 1000, "h": 300} }
+    ],
+    "globalInputs": []
+  },
+  "title": "Sankofa SOC Triage",
+  "description": "Multi-agent alert triage powered by Splunk MCP Server + Claude AI",
+  "defaults": {}
+}

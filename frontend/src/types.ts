@@ -20,6 +20,7 @@ export interface AlertDetail extends Alert {
   kill_chain: string[] | null
   containment_steps: string[] | null
   subagent_findings: Record<string, string> | null
+  spl_queries: Record<string, string> | null
   report_completed_at: string | null
 }
 
@@ -29,4 +30,15 @@ export interface ChatMessage {
   role: "user" | "assistant"
   content: string
   timestamp: string
+}
+
+export type ActionDecisionStatus = "pending" | "approved" | "dismissed"
+
+export interface ActionDecision {
+  id: string
+  alert_id: string
+  action_index: number
+  action_text: string
+  status: ActionDecisionStatus
+  decided_at: string | null
 }

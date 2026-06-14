@@ -1,0 +1,25 @@
+Sankofa — Agentic SOC Triage for Splunk
+========================================
+
+Installation:
+1. Upload sankofa.spl via Splunk Web -> Apps -> Install from file
+2. Configure the Sankofa backend (see main README.md)
+3. Set SPLUNK_TOKEN in backend/.env to a token with search permissions
+4. Start the backend: uvicorn main:app --reload --port 8001
+5. Start the frontend: npm run dev
+
+Saved Searches (auto-fire alerts to Sankofa):
+- Sankofa - Detect Brute Force (every 5min)
+- Sankofa - Detect Lateral Movement (every 5min)
+- Sankofa - Detect LSASS Access (every 2min)
+- Sankofa - Detect C2 Beacon (every 10min)
+
+Dashboard:
+- Apps -> Sankofa SOC Triage -> Dashboard
+
+Architecture:
+- Sankofa polls Splunk REST API every 30s for fired alerts
+- High/critical alerts trigger 4 parallel subagents (Auth, Network, Endpoint, Lateral)
+- Each subagent uses Splunk MCP Server to generate SPL from natural language
+- Claude AI synthesizes findings into kill chain + confidence score + containment steps
+- Analysts approve/dismiss containment actions via the React dashboard

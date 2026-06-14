@@ -1,0 +1,52 @@
+[
+  {
+    "title": "Reconnaissance — Port Scan from External IP",
+    "severity": "4",
+    "sid": "campaign-001",
+    "src_ip": "185.220.101.42",
+    "dest": "192.168.1.1",
+    "campaign_step": 1,
+    "campaign_note": "Attacker begins by scanning the perimeter firewall",
+    "_raw": "action=blocked src=185.220.101.42 dest=192.168.1.1 dpt=22,80,443,8080,3389,445 flags=SYN proto=TCP bytes=0"
+  },
+  {
+    "title": "Credential Access — Brute Force Against Administrator",
+    "severity": "3",
+    "sid": "campaign-002",
+    "src_ip": "185.220.101.42",
+    "dest": "win-dc01",
+    "campaign_step": 2,
+    "campaign_note": "After finding port 3389 open, attacker brute forces RDP",
+    "_raw": "EventCode=4625 Account_Name=administrator Source_Network_Address=185.220.101.42 Failure_Reason=Unknown_user_name_or_bad_password Logon_Type=10 count=47"
+  },
+  {
+    "title": "Credential Dumping — LSASS Memory Access on Domain Controller",
+    "severity": "1",
+    "sid": "campaign-003",
+    "src_ip": "185.220.101.42",
+    "dest": "win-dc01",
+    "campaign_step": 3,
+    "campaign_note": "Brute force succeeded. Attacker now dumps credentials from LSASS",
+    "_raw": "EventCode=4656 Object_Name=\\Device\\HarddiskVolume2\\Windows\\System32\\lsass.exe Access_Mask=0x1fffff Process_Name=C:\\Windows\\System32\\cmd.exe Account_Name=administrator"
+  },
+  {
+    "title": "Lateral Movement — SMB Connection to Finance Server",
+    "severity": "2",
+    "sid": "campaign-004",
+    "src_ip": "185.220.101.42",
+    "dest": "win-finance01",
+    "campaign_step": 4,
+    "campaign_note": "With stolen credentials, attacker pivots to the finance server",
+    "_raw": "EventCode=4648 Account_Name=svc_backup Target_Server_Name=win-finance01 Process_Name=C:\\Windows\\System32\\net.exe Logon_Type=3 src_ip=win-dc01"
+  },
+  {
+    "title": "C2 Beacon — Suspicious Outbound HTTPS to Rare External IP",
+    "severity": "2",
+    "sid": "campaign-005",
+    "src_ip": "192.168.10.50",
+    "dest": "91.108.4.200",
+    "campaign_step": 5,
+    "campaign_note": "Malware establishes C2 channel. Attacker now has persistent access",
+    "_raw": "action=allowed src=192.168.10.50 dest=91.108.4.200 dpt=443 proto=HTTPS bytes=2847 duration=300 repeat_count=12 url_category=unknown"
+  }
+]

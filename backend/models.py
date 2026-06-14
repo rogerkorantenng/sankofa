@@ -29,6 +29,7 @@ class InvestigationReport(BaseModel):
     confidence: int = 0
     containment_steps: list[str] = Field(default_factory=list)
     subagent_findings: dict = Field(default_factory=dict)
+    spl_queries: dict = Field(default_factory=dict)
     completed_at: datetime
 
 
@@ -38,3 +39,15 @@ class ChatMessage(BaseModel):
     role: MessageRole
     content: str
     timestamp: datetime
+
+
+ActionDecisionStatus = Literal["pending", "approved", "dismissed"]
+
+
+class ActionDecision(BaseModel):
+    id: str
+    alert_id: str
+    action_index: int
+    action_text: str
+    status: ActionDecisionStatus = "pending"
+    decided_at: datetime | None = None

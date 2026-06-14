@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useSankofaStore } from "../store"
 import { AlertRow } from "./AlertRow"
-import { fetchAlert, seedAlerts } from "../api"
+import { fetchAlert, seedAlerts, seedCampaign } from "../api"
 import type { Alert } from "../types"
 
 export function AlertQueue() {
@@ -36,12 +36,20 @@ export function AlertQueue() {
         <h1 className="text-white font-semibold text-sm tracking-wide">
           SANKOFA — SOC TRIAGE
         </h1>
-        <button
-          onClick={() => seedAlerts().catch(console.error)}
-          className="text-xs text-gray-400 hover:text-white border border-gray-600 hover:border-gray-400 px-2 py-1 rounded transition-colors"
-        >
-          seed demo
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => seedCampaign().catch(console.error)}
+            className="text-xs text-purple-400 hover:text-white border border-purple-700 hover:border-purple-400 px-2 py-1 rounded transition-colors"
+          >
+            ▶ campaign
+          </button>
+          <button
+            onClick={() => seedAlerts().catch(console.error)}
+            className="text-xs text-gray-400 hover:text-white border border-gray-600 hover:border-gray-400 px-2 py-1 rounded transition-colors"
+          >
+            seed demo
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         {alerts.length === 0 ? (

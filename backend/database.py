@@ -6,6 +6,8 @@ from config import settings
 
 
 async def init_db(db: aiosqlite.Connection) -> None:
+    await db.execute("PRAGMA journal_mode=WAL")
+    await db.execute("PRAGMA busy_timeout=5000")
     await db.execute("""
         CREATE TABLE IF NOT EXISTS alerts (
             id TEXT PRIMARY KEY,
@@ -29,6 +31,7 @@ async def init_db(db: aiosqlite.Connection) -> None:
             confidence INTEGER NOT NULL DEFAULT 0,
             containment_steps TEXT NOT NULL DEFAULT '[]',
             subagent_findings TEXT NOT NULL DEFAULT '{}',
+            spl_queries TEXT NOT NULL DEFAULT '{}',
             completed_at TEXT NOT NULL
         )
     """)
@@ -39,6 +42,16 @@ async def init_db(db: aiosqlite.Connection) -> None:
             role TEXT NOT NULL,
             content TEXT NOT NULL,
             timestamp TEXT NOT NULL
+        )
+    """)
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS action_decisions (
+            id TEXT PRIMARY KEY,
+            alert_id TEXT NOT NULL,
+            action_index INTEGER NOT NULL,
+            action_text TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            decided_at TEXT
         )
     """)
     await db.commit()
@@ -65,12 +78,12 @@ async def save_report(db: aiosqlite.Connection, report: InvestigationReport) -> 
     await db.execute(
         """INSERT OR REPLACE INTO investigation_reports
            (alert_id, tier, severity_score, mitre_tactic, summary, kill_chain,
-            confidence, containment_steps, subagent_findings, completed_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            confidence, containment_steps, subagent_findings, spl_queries, completed_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (report.alert_id, report.tier, report.severity_score, report.mitre_tactic,
          report.summary, json.dumps(report.kill_chain), report.confidence,
          json.dumps(report.containment_steps), json.dumps(report.subagent_findings),
-         report.completed_at.isoformat()),
+         json.dumps(report.spl_queries), report.completed_at.isoformat()),
     )
     await db.commit()
 
@@ -99,7 +112,8 @@ async def get_alert_with_report(db: aiosqlite.Connection, alert_id: str) -> dict
     async with db.execute("""
         SELECT a.*, r.tier, r.severity_score, r.mitre_tactic, r.summary,
                r.kill_chain, r.confidence, r.containment_steps,
-               r.subagent_findings, r.completed_at as report_completed_at
+               r.subagent_findings, r.spl_queries,
+               r.completed_at as report_completed_at
         FROM alerts a
         LEFT JOIN investigation_reports r ON a.id = r.alert_id
         WHERE a.id = ?
@@ -109,6 +123,28 @@ async def get_alert_with_report(db: aiosqlite.Connection, alert_id: str) -> dict
             return None
         cols = [d[0] for d in cursor.description]
         return dict(zip(cols, row))
+
+
+async def save_action_decision(db: aiosqlite.Connection, decision) -> None:
+    await db.execute(
+        """INSERT OR REPLACE INTO action_decisions
+           (id, alert_id, action_index, action_text, status, decided_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (decision.id, decision.alert_id, decision.action_index,
+         decision.action_text, decision.status,
+         decision.decided_at.isoformat() if decision.decided_at else None),
+    )
+    await db.commit()
+
+
+async def get_action_decisions(db: aiosqlite.Connection, alert_id: str) -> list[dict]:
+    async with db.execute(
+        "SELECT * FROM action_decisions WHERE alert_id = ? ORDER BY action_index ASC",
+        (alert_id,)
+    ) as cursor:
+        rows = await cursor.fetchall()
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in rows]
 
 
 async def get_chat_messages(db: aiosqlite.Connection, alert_id: str) -> list[dict]:

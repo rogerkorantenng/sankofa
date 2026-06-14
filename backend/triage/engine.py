@@ -40,14 +40,29 @@ async def run_full_investigation(alert: Alert) -> InvestigationReport:
     )
     auth_result, network_result, endpoint_result, lateral_result = results
 
-    def safe(r: object) -> str:
-        return str(r) if not isinstance(r, Exception) else f"Agent error: {r}"
+    def safe_findings(r: object) -> dict:
+        if isinstance(r, Exception):
+            return {"findings": f"Agent error: {r}", "indicators": [], "spl_query": ""}
+        if isinstance(r, dict):
+            return r
+        return {"findings": str(r), "indicators": [], "spl_query": ""}
+
+    auth_f = safe_findings(auth_result)
+    network_f = safe_findings(network_result)
+    endpoint_f = safe_findings(endpoint_result)
+    lateral_f = safe_findings(lateral_result)
 
     subagent_findings = {
-        "auth": safe(auth_result),
-        "network": safe(network_result),
-        "endpoint": safe(endpoint_result),
-        "lateral": safe(lateral_result),
+        "auth": auth_f.get("findings", ""),
+        "network": network_f.get("findings", ""),
+        "endpoint": endpoint_f.get("findings", ""),
+        "lateral": lateral_f.get("findings", ""),
+    }
+    spl_queries = {
+        "auth": auth_f.get("spl_query", ""),
+        "network": network_f.get("spl_query", ""),
+        "endpoint": endpoint_f.get("spl_query", ""),
+        "lateral": lateral_f.get("spl_query", ""),
     }
 
     synthesis_prompt = f"""You are a senior SOC analyst synthesizing a multi-agent security investigation.
@@ -95,6 +110,7 @@ Respond with a JSON object:
         confidence=int(data.get("confidence", 0)),
         containment_steps=data.get("containment_steps", []),
         subagent_findings=subagent_findings,
+        spl_queries=spl_queries,
         completed_at=datetime.utcnow(),
     )
 

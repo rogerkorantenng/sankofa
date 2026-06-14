@@ -1,4 +1,4 @@
-import type { AlertDetail } from "./types"
+import type { AlertDetail, ActionDecision } from "./types"
 
 export async function fetchAlert(id: string): Promise<AlertDetail> {
   const res = await fetch(`/alerts/${id}`)
@@ -9,6 +9,32 @@ export async function fetchAlert(id: string): Promise<AlertDetail> {
 export async function seedAlerts(): Promise<{ seeded: number }> {
   const res = await fetch(`/alerts/seed`, { method: "POST" })
   if (!res.ok) throw new Error("Seed failed")
+  return res.json()
+}
+
+export async function decideAction(
+  alertId: string,
+  actionIndex: number,
+  actionText: string,
+  status: "approved" | "dismissed"
+): Promise<void> {
+  const res = await fetch(`/alerts/${alertId}/actions/${actionIndex}/decide`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, action_text: actionText }),
+  })
+  if (!res.ok) throw new Error("Decision failed")
+}
+
+export async function getActions(alertId: string): Promise<ActionDecision[]> {
+  const res = await fetch(`/alerts/${alertId}/actions`)
+  if (!res.ok) throw new Error("Failed to fetch actions")
+  return res.json()
+}
+
+export async function seedCampaign(): Promise<{ seeded: number }> {
+  const res = await fetch(`/alerts/seed/campaign`, { method: "POST" })
+  if (!res.ok) throw new Error("Campaign seed failed")
   return res.json()
 }
 
