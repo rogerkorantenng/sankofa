@@ -7,3 +7,4 @@ __pycache__/
 *.pyc
 package_app.sh
 DEVPOST_SUBMISSION.md
+docs/
