@@ -60,45 +60,44 @@ export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null)
-  // Store dimensions in a ref — changes don't trigger simulation rebuild
   const dimensionsRef = useRef({ width: 0, height: 0 })
   const [ready, setReady] = useState(false)
   const { alerts, setSelectedAlertId, setSelectedAlert } = useSankofaStore()
 
-  // Measure once on mount, then just update SVG size on resize (no simulation restart)
+  // Measure on mount — SVG is always in the DOM so this is reliable
   useEffect(() => {
-    if (!containerRef.current) return
     const el = containerRef.current
+    if (!el) return
 
     const measure = () => {
       const rect = el.getBoundingClientRect()
       if (rect.width > 0 && rect.height > 0) {
-        const changed = dimensionsRef.current.width !== rect.width || dimensionsRef.current.height !== rect.height
         dimensionsRef.current = { width: rect.width, height: rect.height }
-        if (!ready) setReady(true)
-        // Just resize the SVG — don't touch the simulation
-        if (svgRef.current && changed) {
-          d3.select(svgRef.current)
-            .attr("width", rect.width)
-            .attr("height", rect.height)
-          // Recentre the force without restarting
-          if (simulationRef.current) {
-            simulationRef.current.force("center", d3.forceCenter(rect.width / 2, rect.height / 2))
-          }
-        }
+        setReady(true)
       }
     }
 
     measure()
-    const t1 = setTimeout(measure, 50)
-    const t2 = setTimeout(measure, 200)
+    const t1 = setTimeout(measure, 30)
+    const t2 = setTimeout(measure, 150)
 
-    const observer = new ResizeObserver(measure)
+    const observer = new ResizeObserver(() => {
+      const rect = el.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        dimensionsRef.current = { width: rect.width, height: rect.height }
+        setReady(r => r || true)
+        // Resize SVG without rebuilding simulation
+        if (svgRef.current) {
+          d3.select(svgRef.current).attr("width", rect.width).attr("height", rect.height)
+          simulationRef.current?.force("center", d3.forceCenter(rect.width / 2, rect.height / 2))
+        }
+      }
+    })
     observer.observe(el)
     return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2) }
-  }, [ready]) // only re-attach if ready flips; resize handler does NOT trigger simulation
+  }, []) // mount only
 
-  // Build / rebuild simulation ONLY when alerts change
+  // Build simulation when alerts change OR when ready flips
   useEffect(() => {
     if (!svgRef.current || !alerts.length || !ready) return
 
@@ -234,13 +233,8 @@ export function GraphView() {
 
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0, background: "var(--bg-1)" }}>
-      {!ready ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-3)", fontSize: 12 }}>
-          Initializing…
-        </div>
-      ) : (
-        <svg ref={svgRef} style={{ display: "block" }} />
-      )}
+      {/* SVG always mounted so containerRef can measure it */}
+      <svg ref={svgRef} style={{ display: "block", opacity: ready ? 1 : 0, transition: "opacity 0.2s" }} />
       {ready && (
         <div style={{
           position: "absolute", bottom: 12, left: 14,
