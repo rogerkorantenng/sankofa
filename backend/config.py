@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     poll_interval_seconds: int = 30
     db_path: str = "sankofa.db"
     splunk_mcp_enabled: bool = True
+    virustotal_api_key: str = ""
+    abuseipdb_api_key: str = ""
+    slack_webhook_url: str = ""
+    slack_signing_secret: str = ""
 
     model_config = {"env_file": ".env"}
 
