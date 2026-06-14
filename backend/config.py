@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     poll_interval_seconds: int = 30
     db_path: str = "sankofa.db"
+    splunk_mcp_enabled: bool = True
 
     model_config = {"env_file": ".env"}
 

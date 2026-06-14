@@ -1,6 +1,6 @@
 """
-Four specialized subagents that each query Splunk directly and return
-structured findings. Each agent uses Anthropic to interpret raw SPL results.
+Four specialized subagents that each query Splunk via MCP and direct REST,
+returning structured findings with full SPL audit trails.
 """
 import asyncio
 import json
@@ -8,6 +8,7 @@ import anthropic
 import splunklib.client as splunk_lib
 import splunklib.results as splunk_results
 from config import settings
+from mcp_client import MCPClient, get_mcp_client
 
 
 def _make_anthropic() -> anthropic.AsyncAnthropic:
@@ -39,16 +40,50 @@ def _run_spl(service: splunk_lib.Service, spl: str, earliest: str = "-30m") -> s
         return f"Search error: {e}"
 
 
-async def run_auth_agent(source_ip: str, affected_host: str, timestamp: str) -> str:
-    service = await asyncio.to_thread(_make_service)
-    earliest = "-30m"
+async def _mcp_generate_and_run(
+    mcp: MCPClient, service: splunk_lib.Service,
+    natural_language: str, fallback_spl: str
+) -> tuple[str, str]:
+    """Use MCP to generate SPL from natural language, then run it. Returns (results, spl_used)."""
+    if settings.splunk_mcp_enabled:
+        gen_result = await mcp.generate_spl(natural_language)
+        spl = gen_result.output.strip()
+        # Only use if MCP returned a real SPL query
+        if spl and not spl.lower().startswith("mcp unavailable") and (
+            spl.lower().startswith("search") or spl.startswith("|")
+        ):
+            results = await asyncio.to_thread(_run_spl, service, spl)
+            return results, f"[MCP generated] {spl}"
+    # Fallback to hardcoded SPL
+    results = await asyncio.to_thread(_run_spl, service, fallback_spl)
+    return results, fallback_spl
 
-    spl = (
+
+def _parse_agent_response(text: str) -> dict:
+    """Parse JSON from agent response, falling back to plain text."""
+    stripped = text.strip()
+    if stripped.startswith("{"):
+        try:
+            return json.loads(stripped)
+        except json.JSONDecodeError:
+            pass
+    return {"findings": text, "indicators": []}
+
+
+async def run_auth_agent(source_ip: str, affected_host: str, timestamp: str) -> dict:
+    mcp = get_mcp_client()
+    service = await asyncio.to_thread(_make_service)
+
+    nl_query = (
+        f"Find authentication events involving source IP {source_ip} "
+        f"or host {affected_host} in the last 30 minutes"
+    )
+    fallback_spl = (
         f'search index=* (sourcetype="WinEventLog:Security" OR sourcetype="linux_secure") '
         f'(src_ip="{source_ip}" OR host="{affected_host}") '
-        f'earliest={earliest} latest=now | head 30 | table _time, EventCode, Account_Name, src_ip, host, _raw'
+        f'earliest=-30m latest=now | head 20 | table _time, EventCode, Account_Name, src_ip, host, _raw'
     )
-    raw_results = await asyncio.to_thread(_run_spl, service, spl, earliest)
+    raw_results, spl_used = await _mcp_generate_and_run(mcp, service, nl_query, fallback_spl)
 
     client = _make_anthropic()
     prompt = f"""You are a security analyst. Analyze these authentication log events for threats.
@@ -65,19 +100,22 @@ Respond with JSON only:
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
-    return message.content[0].text
+    result = _parse_agent_response(message.content[0].text)
+    result["spl_query"] = spl_used
+    return result
 
 
-async def run_network_agent(source_ip: str, timestamp: str) -> str:
+async def run_network_agent(source_ip: str, timestamp: str) -> dict:
+    mcp = get_mcp_client()
     service = await asyncio.to_thread(_make_service)
-    earliest = "-30m"
 
-    spl = (
+    nl_query = f"Find network flows from or to source IP {source_ip} in the last 30 minutes"
+    fallback_spl = (
         f'search index=* (sourcetype="firewall" OR sourcetype="pan:traffic" OR sourcetype="cisco:asa") '
         f'(src="{source_ip}" OR dest="{source_ip}") '
-        f'earliest={earliest} latest=now | head 30 | table _time, src, dest, dpt, action, _raw'
+        f'earliest=-30m latest=now | head 20 | table _time, src, dest, dpt, action, _raw'
     )
-    raw_results = await asyncio.to_thread(_run_spl, service, spl, earliest)
+    raw_results, spl_used = await _mcp_generate_and_run(mcp, service, nl_query, fallback_spl)
 
     client = _make_anthropic()
     prompt = f"""You are a network security analyst. Analyze these network flow events.
@@ -94,19 +132,22 @@ Respond with JSON only:
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
-    return message.content[0].text
+    result = _parse_agent_response(message.content[0].text)
+    result["spl_query"] = spl_used
+    return result
 
 
-async def run_endpoint_agent(affected_host: str, timestamp: str) -> str:
+async def run_endpoint_agent(affected_host: str, timestamp: str) -> dict:
+    mcp = get_mcp_client()
     service = await asyncio.to_thread(_make_service)
-    earliest = "-30m"
 
-    spl = (
+    nl_query = f"Find suspicious process and file activity on host {affected_host} in the last 30 minutes"
+    fallback_spl = (
         f'search index=* (sourcetype="WinEventLog:System" OR sourcetype="sysmon" OR sourcetype="osquery") '
         f'host="{affected_host}" '
-        f'earliest={earliest} latest=now | head 30 | table _time, host, EventCode, Process_Name, Process_Command_Line, _raw'
+        f'earliest=-30m latest=now | head 20 | table _time, host, EventCode, Process_Name, Process_Command_Line, _raw'
     )
-    raw_results = await asyncio.to_thread(_run_spl, service, spl, earliest)
+    raw_results, spl_used = await _mcp_generate_and_run(mcp, service, nl_query, fallback_spl)
 
     client = _make_anthropic()
     prompt = f"""You are an endpoint forensics analyst. Analyze these process and system events.
@@ -123,19 +164,22 @@ Respond with JSON only:
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
-    return message.content[0].text
+    result = _parse_agent_response(message.content[0].text)
+    result["spl_query"] = spl_used
+    return result
 
 
-async def run_lateral_agent(affected_host: str, timestamp: str) -> str:
+async def run_lateral_agent(affected_host: str, timestamp: str) -> dict:
+    mcp = get_mcp_client()
     service = await asyncio.to_thread(_make_service)
-    earliest = "-30m"
 
-    spl = (
+    nl_query = f"Find lateral movement from host {affected_host} to other internal hosts in the last 30 minutes"
+    fallback_spl = (
         f'search index=* sourcetype="WinEventLog:Security" '
         f'(EventCode=4648 OR EventCode=4624) host="{affected_host}" '
-        f'earliest={earliest} latest=now | head 30 | table _time, EventCode, Account_Name, Target_Server_Name, Logon_Type, _raw'
+        f'earliest=-30m latest=now | head 20 | table _time, EventCode, Account_Name, Target_Server_Name, Logon_Type, _raw'
     )
-    raw_results = await asyncio.to_thread(_run_spl, service, spl, earliest)
+    raw_results, spl_used = await _mcp_generate_and_run(mcp, service, nl_query, fallback_spl)
 
     client = _make_anthropic()
     prompt = f"""You are a threat hunter specializing in lateral movement detection.
@@ -152,4 +196,7 @@ Respond with JSON only:
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
-    return message.content[0].text
+    result = _parse_agent_response(message.content[0].text)
+    result.setdefault("other_hosts", [])
+    result["spl_query"] = spl_used
+    return result
