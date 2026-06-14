@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import * as d3 from "d3"
 import type { Alert } from "../types"
 import { useSankofaStore } from "../store"
@@ -64,6 +64,9 @@ export function GraphView() {
   const [ready, setReady] = useState(false)
   const { alerts, setSelectedAlertId, setSelectedAlert } = useSankofaStore()
 
+  // Only rebuild the graph when the set of alert IDs changes — not on every status/score update
+  const alertIds = useMemo(() => alerts.map(a => a.id).sort().join(","), [alerts])
+
   // Measure on mount — SVG is always in the DOM so this is reliable
   useEffect(() => {
     const el = containerRef.current
@@ -97,9 +100,9 @@ export function GraphView() {
     return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2) }
   }, []) // mount only
 
-  // Build simulation when alerts change OR when ready flips
+  // Build simulation when alert IDs change OR when ready flips — NOT on status/score updates
   useEffect(() => {
-    if (!svgRef.current || !alerts.length || !ready) return
+    if (!svgRef.current || !alertIds || !ready) return
 
     simulationRef.current?.stop()
 
@@ -108,7 +111,7 @@ export function GraphView() {
     svg.selectAll("*").remove()
     svg.attr("width", width).attr("height", height)
 
-    const { nodes, links } = buildGraph(alerts)
+    const { nodes, links } = buildGraph(alerts.filter(a => alertIds.includes(a.id)))
 
     const zoomG = svg.append("g").attr("class", "zoom-root")
     svg.call(
@@ -118,11 +121,12 @@ export function GraphView() {
     )
 
     const simulation = d3.forceSimulation<GraphNode>(nodes)
-      .force("link", d3.forceLink<GraphNode, GraphLink>(links).id(d => d.id).distance(120))
-      .force("charge", d3.forceManyBody().strength(-350))
+      .force("link", d3.forceLink<GraphNode, GraphLink>(links).id(d => d.id).distance(130))
+      .force("charge", d3.forceManyBody().strength(-400))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide(28))
-      .alphaDecay(0.04)
+      .force("collision", d3.forceCollide(32))
+      .alphaDecay(0.06)   // settles in ~50 ticks instead of ~300
+      .alphaMin(0.001)    // stops early
 
     simulationRef.current = simulation
 
@@ -217,7 +221,8 @@ export function GraphView() {
     })
 
     return () => { simulation.stop(); simulationRef.current = null }
-  }, [alerts, ready, setSelectedAlertId, setSelectedAlert]) // NOT dimensions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alertIds, ready]) // NOT on every alert update — only when IDs change
 
   if (!alerts.length) {
     return (
