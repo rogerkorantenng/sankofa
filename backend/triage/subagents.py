@@ -19,8 +19,8 @@ def _make_service() -> splunk_lib.Service:
     return splunk_lib.connect(
         host=settings.splunk_host,
         port=settings.splunk_port,
-        splunkToken=settings.splunk_token,
-        autologin=True,
+        splunkToken=settings.splunk_token, scheme="https",
+        
         timeout=10,
     )
 

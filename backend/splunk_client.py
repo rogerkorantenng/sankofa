@@ -8,8 +8,8 @@ class SplunkClient:
         self.service = splunk_client_lib.connect(
             host=settings.splunk_host,
             port=settings.splunk_port,
-            splunkToken=settings.splunk_token,
-            autologin=True,
+            splunkToken=settings.splunk_token, scheme="https",
+            
         )
 
     def search(self, spl: str, earliest: str = "-15m", latest: str = "now") -> list[dict]:

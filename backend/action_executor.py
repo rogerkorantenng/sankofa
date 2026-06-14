@@ -17,7 +17,7 @@ async def _execute_add_to_watchlist(params: dict) -> str:
     try:
         service = splunk_lib.connect(
             host=settings.splunk_host, port=settings.splunk_port,
-            splunkToken=settings.splunk_token, autologin=True, timeout=10,
+            splunkToken=settings.splunk_token, scheme="https",  timeout=10,
         )
         try:
             service.kvstore["sankofa_watchlist"].data.insert(
@@ -41,7 +41,7 @@ async def _execute_create_splunk_alert(params: dict) -> str:
     try:
         service = splunk_lib.connect(
             host=settings.splunk_host, port=settings.splunk_port,
-            splunkToken=settings.splunk_token, autologin=True, timeout=10,
+            splunkToken=settings.splunk_token, scheme="https",  timeout=10,
         )
         service.saved_searches.create(
             name, spl,
