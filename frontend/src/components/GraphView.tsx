@@ -8,7 +8,7 @@ const SEVERITY_COLOR: Record<string, string> = {
   critical: "#DC2626",
   high:     "#EA580C",
   medium:   "#D97706",
-  low:      "#6B7280",
+  low:      "#9CA3AF",
 }
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -27,43 +27,28 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
 function buildGraph(alerts: Alert[]): { nodes: GraphNode[]; links: GraphLink[] } {
   const nodeMap = new Map<string, GraphNode>()
   const links: GraphLink[] = []
+  const SEVERITY_ORDER = ["low", "medium", "high", "critical"]
 
   for (const alert of alerts) {
-    const ip = alert.source_ip || "unknown"
+    const ip = alert.source_ip || "external"
     const host = alert.affected_host || "unknown"
 
     if (!nodeMap.has(ip)) {
-      nodeMap.set(ip, {
-        id: ip, label: ip, nodeType: "ip",
-        severity: alert.severity, alertIds: [alert.id],
-        confidence: alert.confidence ?? 0,
-      })
+      nodeMap.set(ip, { id: ip, label: ip, nodeType: "ip", severity: alert.severity, alertIds: [alert.id], confidence: alert.confidence ?? 0 })
     } else {
-      const existing = nodeMap.get(ip)!
-      if (!existing.alertIds.includes(alert.id)) existing.alertIds.push(alert.id)
-      // Escalate severity to the worst seen
-      const order = ["low", "medium", "high", "critical"]
-      if (order.indexOf(alert.severity) > order.indexOf(existing.severity)) {
-        existing.severity = alert.severity
-      }
+      const n = nodeMap.get(ip)!
+      if (!n.alertIds.includes(alert.id)) n.alertIds.push(alert.id)
+      if (SEVERITY_ORDER.indexOf(alert.severity) > SEVERITY_ORDER.indexOf(n.severity)) n.severity = alert.severity
     }
 
     if (!nodeMap.has(host)) {
-      nodeMap.set(host, {
-        id: host, label: host, nodeType: "host",
-        severity: alert.severity, alertIds: [alert.id],
-        confidence: alert.confidence ?? 0,
-      })
+      nodeMap.set(host, { id: host, label: host, nodeType: "host", severity: alert.severity, alertIds: [alert.id], confidence: alert.confidence ?? 0 })
     } else {
-      const existing = nodeMap.get(host)!
-      if (!existing.alertIds.includes(alert.id)) existing.alertIds.push(alert.id)
+      const n = nodeMap.get(host)!
+      if (!n.alertIds.includes(alert.id)) n.alertIds.push(alert.id)
     }
 
-    // Avoid duplicate links between same ip→host pair
-    const alreadyLinked = links.some(
-      (l) => l.source === ip && l.target === host
-    )
-    if (!alreadyLinked) {
+    if (!links.some(l => l.source === ip && l.target === host)) {
       links.push({ source: ip, target: host, alertId: alert.id })
     }
   }
@@ -75,10 +60,12 @@ export function GraphView() {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null)
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  // Store dimensions in a ref — changes don't trigger simulation rebuild
+  const dimensionsRef = useRef({ width: 0, height: 0 })
+  const [ready, setReady] = useState(false)
   const { alerts, setSelectedAlertId, setSelectedAlert } = useSankofaStore()
 
-  // Measure container after layout with ResizeObserver
+  // Measure once on mount, then just update SVG size on resize (no simulation restart)
   useEffect(() => {
     if (!containerRef.current) return
     const el = containerRef.current
@@ -86,71 +73,69 @@ export function GraphView() {
     const measure = () => {
       const rect = el.getBoundingClientRect()
       if (rect.width > 0 && rect.height > 0) {
-        setDimensions({ width: rect.width, height: rect.height })
+        const changed = dimensionsRef.current.width !== rect.width || dimensionsRef.current.height !== rect.height
+        dimensionsRef.current = { width: rect.width, height: rect.height }
+        if (!ready) setReady(true)
+        // Just resize the SVG — don't touch the simulation
+        if (svgRef.current && changed) {
+          d3.select(svgRef.current)
+            .attr("width", rect.width)
+            .attr("height", rect.height)
+          // Recentre the force without restarting
+          if (simulationRef.current) {
+            simulationRef.current.force("center", d3.forceCenter(rect.width / 2, rect.height / 2))
+          }
+        }
       }
     }
 
-    // Initial measure — retry until we get non-zero height
     measure()
-    const retryTimer = setTimeout(measure, 50)
-    const retryTimer2 = setTimeout(measure, 150)
+    const t1 = setTimeout(measure, 50)
+    const t2 = setTimeout(measure, 200)
 
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        })
-      }
-    })
+    const observer = new ResizeObserver(measure)
     observer.observe(el)
-    return () => {
-      observer.disconnect()
-      clearTimeout(retryTimer)
-      clearTimeout(retryTimer2)
-    }
-  }, [])
+    return () => { observer.disconnect(); clearTimeout(t1); clearTimeout(t2) }
+  }, [ready]) // only re-attach if ready flips; resize handler does NOT trigger simulation
 
-  // Rebuild graph when alerts or dimensions change
+  // Build / rebuild simulation ONLY when alerts change
   useEffect(() => {
-    if (!svgRef.current || !alerts.length || dimensions.width === 0) return
+    if (!svgRef.current || !alerts.length || !ready) return
 
-    // Stop any existing simulation
     simulationRef.current?.stop()
 
+    const { width, height } = dimensionsRef.current
     const svg = d3.select(svgRef.current)
     svg.selectAll("*").remove()
+    svg.attr("width", width).attr("height", height)
 
-    const { width, height } = dimensions
     const { nodes, links } = buildGraph(alerts)
 
-    // Add zoom behaviour
-    const zoomG = svg.append("g")
+    const zoomG = svg.append("g").attr("class", "zoom-root")
     svg.call(
       d3.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([0.3, 3])
-        .on("zoom", (event) => {
-          zoomG.attr("transform", event.transform)
-        })
+        .scaleExtent([0.25, 4])
+        .on("zoom", (e) => zoomG.attr("transform", e.transform))
     )
 
     const simulation = d3.forceSimulation<GraphNode>(nodes)
-      .force("link", d3.forceLink<GraphNode, GraphLink>(links).id((d) => d.id).distance(140))
-      .force("charge", d3.forceManyBody().strength(-400))
+      .force("link", d3.forceLink<GraphNode, GraphLink>(links).id(d => d.id).distance(120))
+      .force("charge", d3.forceManyBody().strength(-350))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide(30))
+      .force("collision", d3.forceCollide(28))
+      .alphaDecay(0.04)
 
     simulationRef.current = simulation
 
+    // Links
     const link = zoomG.append("g")
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("stroke", "#D1D5DB")
+      .attr("stroke", "#E5E7EB")
       .attr("stroke-width", 1.5)
-      .attr("stroke-dasharray", "4 2")
 
+    // Nodes
     const node = zoomG.append("g")
       .selectAll<SVGGElement, GraphNode>("g")
       .data(nodes)
@@ -158,114 +143,117 @@ export function GraphView() {
       .attr("cursor", "pointer")
       .call(
         d3.drag<SVGGElement, GraphNode>()
-          .on("start", (event, d) => {
-            if (!event.active) simulation.alphaTarget(0.3).restart()
-            d.fx = d.x; d.fy = d.y
-          })
-          .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y })
-          .on("end", (event, d) => {
-            if (!event.active) simulation.alphaTarget(0)
-            d.fx = null; d.fy = null
-          })
+          .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.2).restart(); d.fx = d.x; d.fy = d.y })
+          .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y })
+          .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null })
       )
-      .on("click", (_event, d) => {
-        // If multiple alerts for this node, open the highest-severity one
-        const alertId = d.alertIds[0]
-        if (alertId) {
-          setSelectedAlertId(alertId)
-          fetchAlert(alertId).then(setSelectedAlert).catch(() => {})
-        }
+      .on("click", (_e, d) => {
+        const id = d.alertIds[0]
+        if (id) { setSelectedAlertId(id); fetchAlert(id).then(setSelectedAlert).catch(() => {}) }
       })
 
-    // Node body
+    // Shadow for depth
+    const defs = svg.append("defs")
+    const filter = defs.append("filter").attr("id", "shadow").attr("x", "-20%").attr("y", "-20%").attr("width", "140%").attr("height", "140%")
+    filter.append("feDropShadow").attr("dx", 0).attr("dy", 1).attr("stdDeviation", 2).attr("flood-color", "rgba(0,0,0,0.12)")
+
+    // Node circle
     node.append("circle")
-      .attr("r", (d) => d.nodeType === "ip" ? 12 : 16)
-      .attr("fill", (d) => SEVERITY_COLOR[d.severity] || "#6B7280")
-      .attr("fill-opacity", 0.9)
+      .attr("r", d => d.nodeType === "ip" ? 14 : 18)
+      .attr("fill", d => SEVERITY_COLOR[d.severity] || "#9CA3AF")
       .attr("stroke", "#fff")
-      .attr("stroke-width", 2)
+      .attr("stroke-width", 2.5)
+      .attr("filter", "url(#shadow)")
 
-    // Alert count badge for nodes with multiple alerts
-    node.filter((d) => d.alertIds.length > 1)
+    // Node type ring (host = double ring)
+    node.filter(d => d.nodeType === "host")
       .append("circle")
-      .attr("r", 7)
-      .attr("cx", 10)
-      .attr("cy", -10)
-      .attr("fill", "#1D4ED8")
-      .attr("stroke", "#111827")
+      .attr("r", 22)
+      .attr("fill", "none")
+      .attr("stroke", d => SEVERITY_COLOR[d.severity] || "#9CA3AF")
       .attr("stroke-width", 1)
+      .attr("stroke-opacity", 0.3)
 
-    node.filter((d) => d.alertIds.length > 1)
+    // Badge for multi-alert nodes
+    node.filter(d => d.alertIds.length > 1)
+      .append("circle")
+      .attr("r", 7).attr("cx", 10).attr("cy", -10)
+      .attr("fill", "#2563EB").attr("stroke", "#fff").attr("stroke-width", 1.5)
+    node.filter(d => d.alertIds.length > 1)
       .append("text")
-      .text((d) => String(d.alertIds.length))
-      .attr("x", 10)
-      .attr("y", -7)
+      .text(d => String(d.alertIds.length))
+      .attr("x", 10).attr("y", -7)
       .attr("text-anchor", "middle")
-      .attr("fill", "white")
-      .attr("font-size", "8px")
-      .attr("font-weight", "bold")
+      .attr("fill", "#fff").attr("font-size", "8px").attr("font-weight", "bold")
 
-    // Node type icon
+    // Label
     node.append("text")
-      .text((d) => d.nodeType === "ip" ? "⬡" : "▣")
+      .text(d => d.label.length > 16 ? d.label.slice(0, 14) + "…" : d.label)
+      .attr("text-anchor", "middle")
+      .attr("dy", d => (d.nodeType === "ip" ? 30 : 36))
+      .attr("fill", "#374151")
+      .attr("font-size", "10px")
+      .attr("font-family", "Inter, sans-serif")
+      .attr("font-weight", "500")
+
+    // Severity label inside circle
+    node.append("text")
+      .text(d => d.nodeType === "ip" ? "IP" : "HOST")
       .attr("text-anchor", "middle")
       .attr("dy", "0.35em")
-      .attr("fill", "white")
-      .attr("font-size", d => d.nodeType === "ip" ? "10px" : "12px")
-
-    // Label below node
-    node.append("text")
-      .text((d) => d.label.length > 18 ? d.label.slice(0, 16) + "…" : d.label)
-      .attr("text-anchor", "middle")
-      .attr("dy", (d) => d.nodeType === "ip" ? 28 : 32)
-      .attr("fill", "#6B7280")
-      .attr("font-size", "9px")
+      .attr("fill", "#fff")
+      .attr("font-size", "7px")
+      .attr("font-weight", "700")
       .attr("font-family", "Inter, sans-serif")
+      .attr("letter-spacing", "0.04em")
+      .attr("pointer-events", "none")
 
     simulation.on("tick", () => {
       link
-        .attr("x1", (d) => (d.source as GraphNode).x ?? 0)
-        .attr("y1", (d) => (d.source as GraphNode).y ?? 0)
-        .attr("x2", (d) => (d.target as GraphNode).x ?? 0)
-        .attr("y2", (d) => (d.target as GraphNode).y ?? 0)
-
-      node.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
+        .attr("x1", d => (d.source as GraphNode).x ?? 0)
+        .attr("y1", d => (d.source as GraphNode).y ?? 0)
+        .attr("x2", d => (d.target as GraphNode).x ?? 0)
+        .attr("y2", d => (d.target as GraphNode).y ?? 0)
+      node.attr("transform", d => `translate(${d.x ?? 0},${d.y ?? 0})`)
     })
 
-    return () => {
-      simulation.stop()
-      simulationRef.current = null
-    }
-  }, [alerts, dimensions, setSelectedAlertId, setSelectedAlert])
+    return () => { simulation.stop(); simulationRef.current = null }
+  }, [alerts, ready, setSelectedAlertId, setSelectedAlert]) // NOT dimensions
 
   if (!alerts.length) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-        No alerts to visualize. Click ▶ campaign to load data.
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--bg-2)", border: "1px solid var(--border-0)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5"><circle cx="8" cy="8" r="5"/><circle cx="16" cy="16" r="5"/><path d="M12 12l-1.5-1.5M12 12l1.5 1.5"/></svg>
+        </div>
+        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>No threat graph</p>
+        <p style={{ fontSize: 12, color: "var(--text-2)" }}>Click "Load Campaign" to visualize attack paths</p>
       </div>
     )
   }
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: "absolute", inset: 0, background: "var(--bg-1)" }}
-    >
-      {dimensions.width === 0 ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#4B5563", fontSize: "12px" }}>
-          Loading graph…
+    <div ref={containerRef} style={{ position: "absolute", inset: 0, background: "var(--bg-1)" }}>
+      {!ready ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-3)", fontSize: 12 }}>
+          Initializing…
         </div>
       ) : (
-        <svg
-          ref={svgRef}
-          width={dimensions.width}
-          height={dimensions.height}
-          style={{ display: "block" }}
-        />
+        <svg ref={svgRef} style={{ display: "block" }} />
       )}
-      {dimensions.width > 0 && (
-        <div style={{ position: "absolute", bottom: 8, left: 8, fontSize: "10px", color: "#374151", fontFamily: "monospace" }}>
-          Scroll to zoom · Drag nodes · Click to investigate
+      {ready && (
+        <div style={{
+          position: "absolute", bottom: 12, left: 14,
+          display: "flex", gap: 12, alignItems: "center",
+        }}>
+          {/* Legend */}
+          {Object.entries(SEVERITY_COLOR).map(([sev, color]) => (
+            <div key={sev} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, border: "1.5px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+              <span style={{ fontSize: 10, color: "var(--text-2)", textTransform: "capitalize" }}>{sev}</span>
+            </div>
+          ))}
+          <span style={{ fontSize: 10, color: "var(--text-3)" }}>· Scroll to zoom · Drag nodes</span>
         </div>
       )}
     </div>

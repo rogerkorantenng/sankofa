@@ -32,10 +32,11 @@ export function InvestigationSidebar() {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 16px",
-            height: 44,
+            height: 48,
             borderBottom: "1px solid var(--border-0)",
             flexShrink: 0,
             background: "var(--bg-0)",
+            boxShadow: "0 1px 0 var(--border-0)",
           }}>
             <div style={{ overflow: "hidden" }}>
               <p style={{

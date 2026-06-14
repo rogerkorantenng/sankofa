@@ -14,17 +14,18 @@ export default function App() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg-1)", overflow: "hidden" }}>
 
-      {/* Top nav — Sentry/Linear style */}
+      {/* Top nav */}
       <nav style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0 16px",
-        height: 48,
+        padding: "0 20px",
+        height: 52,
         background: "var(--bg-0)",
         borderBottom: "1px solid var(--border-0)",
         flexShrink: 0,
         zIndex: 10,
+        boxShadow: "0 1px 0 var(--border-0)",
       }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -119,6 +120,7 @@ export default function App() {
           overflow: "hidden",
           borderRight: "1px solid var(--border-0)",
           background: "var(--bg-0)",
+          boxShadow: "1px 0 0 var(--border-0)",
         }}>
           <AlertQueue />
         </div>
