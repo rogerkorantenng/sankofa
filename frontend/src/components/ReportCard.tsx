@@ -2,6 +2,7 @@ import type { AlertDetail } from "../types"
 import { SeverityBadge } from "./SeverityBadge"
 import { KillChainTimeline } from "./KillChainTimeline"
 import { AuditTrail } from "./AuditTrail"
+import { EnrichmentPanel } from "./EnrichmentPanel"
 
 export function ReportCard({ alert }: { alert: AlertDetail }) {
   const score = alert.severity_score ?? 0
@@ -10,6 +11,7 @@ export function ReportCard({ alert }: { alert: AlertDetail }) {
   const steps = alert.containment_steps ?? []
   const findings = alert.subagent_findings ?? {}
   const queries = alert.spl_queries ?? {}
+  const threatIntel = alert.threat_intel ?? null
 
   return (
     <div className="p-4 space-y-4">
@@ -56,6 +58,8 @@ export function ReportCard({ alert }: { alert: AlertDetail }) {
       {alert.summary && (
         <p className="text-xs text-gray-300 leading-relaxed">{alert.summary}</p>
       )}
+
+      {threatIntel && <EnrichmentPanel intel={threatIntel} />}
 
       {alert.status !== "done" && (
         <p className="text-xs text-blue-400 animate-pulse">
