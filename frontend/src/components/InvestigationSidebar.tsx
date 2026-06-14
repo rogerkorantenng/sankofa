@@ -11,25 +11,94 @@ export function InvestigationSidebar() {
       {selectedAlert && (
         <motion.div
           key="sidebar"
-          initial={{ x: "100%" }}
-          animate={{ x: 0 }}
-          exit={{ x: "100%" }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="absolute right-0 top-0 bottom-0 w-3/5 flex flex-col bg-gray-950 border-l border-gray-700 z-20 shadow-2xl"
+          initial={{ x: "100%", opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: "100%", opacity: 0 }}
+          transition={{ type: "spring", stiffness: 320, damping: 32 }}
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: "62%",
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--bg-panel)",
+            borderLeft: "1px solid var(--border)",
+            zIndex: 20,
+          }}
         >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
-            <span className="text-xs text-gray-400">Investigation</span>
+          {/* Sidebar header */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 14px",
+            height: 34,
+            background: "var(--bg-base)",
+            borderBottom: "1px solid var(--border)",
+            flexShrink: 0,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.12em" }}>INVESTIGATION /</span>
+              <span style={{
+                fontSize: 8,
+                color: "var(--accent)",
+                letterSpacing: "0.12em",
+                fontWeight: 700,
+                maxWidth: 280,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {selectedAlert.title}
+              </span>
+            </div>
             <button
               onClick={() => { setSelectedAlertId(null); setSelectedAlert(null) }}
-              className="text-gray-500 hover:text-white text-xs"
+              style={{
+                width: 20,
+                height: 20,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                color: "var(--text-secondary)",
+                fontSize: 10,
+                cursor: "pointer",
+                transition: "all 0.12s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--text-secondary)" }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)" }}
             >
               ✕
             </button>
           </div>
-          <div className="flex-shrink-0 overflow-y-auto" style={{ maxHeight: "55%" }}>
+
+          {/* Report section */}
+          <div style={{ flexShrink: 0, overflowY: "auto", maxHeight: "54%" }}>
             <ReportCard alert={selectedAlert} />
           </div>
-          <div className="flex-1 overflow-hidden min-h-0">
+
+          {/* Divider */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "0 14px",
+            height: 26,
+            background: "var(--bg-base)",
+            borderTop: "1px solid var(--border)",
+            borderBottom: "1px solid var(--border)",
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.15em" }}>
+              AI ANALYST — ASK A FOLLOW-UP
+            </span>
+          </div>
+
+          {/* Chat */}
+          <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
             <ChatPanel alertId={selectedAlert.id} />
           </div>
         </motion.div>

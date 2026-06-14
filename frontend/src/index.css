@@ -1,3 +1,163 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-base: #070B0F;
+  --bg-panel: #0B1017;
+  --bg-elevated: #0F1620;
+  --bg-hover: #141D28;
+  --border: #1A2535;
+  --border-bright: #243347;
+
+  --text-primary: #CDD8E3;
+  --text-secondary: #5C7A96;
+  --text-dim: #2D4156;
+
+  --critical: #FF2D3F;
+  --critical-glow: rgba(255, 45, 63, 0.25);
+  --critical-dim: rgba(255, 45, 63, 0.08);
+  --high: #FF7A1A;
+  --high-glow: rgba(255, 122, 26, 0.2);
+  --high-dim: rgba(255, 122, 26, 0.08);
+  --medium: #FFB800;
+  --medium-glow: rgba(255, 184, 0, 0.2);
+  --medium-dim: rgba(255, 184, 0, 0.06);
+  --low: #2D5A7A;
+  --low-dim: rgba(45, 90, 122, 0.08);
+
+  --accent: #00D4FF;
+  --accent-glow: rgba(0, 212, 255, 0.2);
+  --accent-dim: rgba(0, 212, 255, 0.08);
+  --green: #00E887;
+  --green-glow: rgba(0, 232, 135, 0.2);
+  --amber: #FFB800;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Scanline overlay on entire app */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Grid dot texture for panels */
+.panel-grid {
+  background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Phosphor glow effects */
+.glow-critical { box-shadow: 0 0 12px var(--critical-glow), inset 0 0 12px var(--critical-dim); }
+.glow-high     { box-shadow: 0 0 12px var(--high-glow); }
+.glow-medium   { box-shadow: 0 0 12px var(--medium-glow); }
+.glow-accent   { box-shadow: 0 0 8px var(--accent-glow); }
+.glow-green    { box-shadow: 0 0 8px var(--green-glow); }
+
+/* Text glow */
+.text-glow-critical { text-shadow: 0 0 8px var(--critical); }
+.text-glow-accent   { text-shadow: 0 0 6px var(--accent); }
+.text-glow-green    { text-shadow: 0 0 6px var(--green); }
+
+/* Animated scan line for active elements */
+@keyframes scan {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--critical); }
+  50%       { border-color: transparent; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes threat-pulse {
+  0%, 100% { box-shadow: 0 0 4px var(--critical-glow); }
+  50%       { box-shadow: 0 0 16px var(--critical-glow), 0 0 32px var(--critical-dim); }
+}
+
+.threat-pulse { animation: threat-pulse 2s ease-in-out infinite; }
+.blink        { animation: blink 1s step-end infinite; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* Selection */
+::selection { background: var(--accent-dim); color: var(--accent); }
+
+/* Utility classes */
+.font-display { font-family: 'Rajdhani', sans-serif; }
+.font-mono    { font-family: 'JetBrains Mono', monospace; }
+
+.border-circuit { border-color: var(--border); }
+.bg-panel     { background: var(--bg-panel); }
+.bg-elevated  { background: var(--bg-elevated); }
+.bg-hover     { background: var(--bg-hover); }
+
+/* Horizontal rule with label */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Stat pill */
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}

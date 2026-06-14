@@ -3,16 +3,45 @@ import { useState } from "react"
 export function ThinkingStep({ query }: { query: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="border border-gray-700 rounded text-xs mb-1">
+    <div style={{
+      border: "1px solid rgba(0,212,255,0.15)",
+      background: "rgba(0,212,255,0.03)",
+      marginBottom: 4,
+    }}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full text-left px-2 py-1 text-gray-500 hover:text-gray-300 flex items-center gap-1"
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          padding: "4px 8px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
       >
-        <span>{open ? "▾" : "▸"}</span>
-        <span className="font-mono truncate">[Searching Splunk]</span>
+        <span style={{ fontSize: 8, color: "var(--accent)", opacity: 0.7 }}>{open ? "▾" : "▸"}</span>
+        <span style={{ fontSize: 8, color: "var(--accent)", letterSpacing: "0.08em", opacity: 0.8 }}>
+          SPLUNK QUERY
+        </span>
       </button>
       {open && (
-        <div className="px-2 pb-2 font-mono text-gray-400 whitespace-pre-wrap">{query}</div>
+        <pre style={{
+          margin: 0,
+          padding: "6px 10px",
+          fontSize: 9,
+          color: "#7BB8D4",
+          fontFamily: "'JetBrains Mono', monospace",
+          overflowX: "auto",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-all",
+          lineHeight: 1.5,
+          borderTop: "1px solid rgba(0,212,255,0.1)",
+        }}>
+          {query}
+        </pre>
       )}
     </div>
   )

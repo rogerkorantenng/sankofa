@@ -1,8 +1,54 @@
-import type { AlertDetail } from "../types"
+import { useState, useEffect } from "react"
+import type { AlertDetail, ActionDecision } from "../types"
 import { SeverityBadge } from "./SeverityBadge"
 import { KillChainTimeline } from "./KillChainTimeline"
 import { AuditTrail } from "./AuditTrail"
 import { EnrichmentPanel } from "./EnrichmentPanel"
+import { decideAction, getActions } from "../api"
+
+const SEVERITY_ACCENT: Record<string, string> = {
+  critical: "#FF2D3F",
+  high:     "#FF7A1A",
+  medium:   "#FFB800",
+  low:      "#2D5A7A",
+}
+
+function ScoreBar({ value, max = 10, color }: { value: number; max?: number; color: string }) {
+  return (
+    <div style={{
+      position: "relative",
+      height: 3,
+      background: "var(--border)",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        position: "absolute",
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: `${(value / max) * 100}%`,
+        background: color,
+        boxShadow: `0 0 6px ${color}`,
+        transition: "width 0.8s ease",
+      }} />
+    </div>
+  )
+}
+
+function Metric({ label, value, color }: { label: string; value: string | number; color?: string }) {
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+    }}>
+      <span style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.12em" }}>{label}</span>
+      <span style={{ fontSize: 18, fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, color: color || "var(--text-primary)", lineHeight: 1 }}>
+        {value}
+      </span>
+    </div>
+  )
+}
 
 export function ReportCard({ alert }: { alert: AlertDetail }) {
   const score = alert.severity_score ?? 0
@@ -12,87 +58,134 @@ export function ReportCard({ alert }: { alert: AlertDetail }) {
   const findings = alert.subagent_findings ?? {}
   const queries = alert.spl_queries ?? {}
   const threatIntel = alert.threat_intel ?? null
+  const accentColor = SEVERITY_ACCENT[alert.severity] || "#2D5A7A"
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-white font-medium text-sm">{alert.title}</p>
-          {alert.mitre_tactic && (
-            <span className="inline-block mt-1 text-xs bg-gray-700 text-blue-300 px-2 py-0.5 rounded">
-              {alert.mitre_tactic}
-            </span>
-          )}
+    <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Header */}
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        paddingBottom: 14,
+        borderBottom: "1px solid var(--border)",
+      }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <p style={{
+              fontSize: 13,
+              fontFamily: "'Rajdhani', sans-serif",
+              fontWeight: 600,
+              color: "#E8F0F8",
+              lineHeight: 1.3,
+              marginBottom: 6,
+            }}>
+              {alert.title}
+            </p>
+            {alert.mitre_tactic && (
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "2px 8px",
+                background: "rgba(0,212,255,0.06)",
+                border: "1px solid rgba(0,212,255,0.2)",
+                fontSize: 9,
+                color: "var(--accent)",
+                letterSpacing: "0.06em",
+              }}>
+                <span style={{ color: "var(--accent)", opacity: 0.6 }}>◈</span>
+                {alert.mitre_tactic}
+              </div>
+            )}
+          </div>
+          <SeverityBadge severity={alert.severity} />
         </div>
-        <SeverityBadge severity={alert.severity} />
+
+        {/* Metrics row */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr",
+          gap: 1,
+          background: "var(--border)",
+        }}>
+          {[
+            { label: "RISK SCORE", value: `${score}/10`, color: accentColor },
+            { label: "CONFIDENCE", value: `${confidence}%`, color: "var(--accent)" },
+            { label: "TIER", value: (alert.tier || "—").toUpperCase(), color: "var(--text-primary)" },
+          ].map(m => (
+            <div key={m.label} style={{
+              background: "var(--bg-elevated)",
+              padding: "8px 10px",
+            }}>
+              <Metric {...m} />
+            </div>
+          ))}
+        </div>
+
+        {/* Score bars */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <ScoreBar value={score} max={10} color={accentColor} />
+          {alert.tier === "full" && <ScoreBar value={confidence} max={100} color="var(--accent)" />}
+        </div>
       </div>
 
-      <div>
-        <div className="flex justify-between text-xs text-gray-400 mb-1">
-          <span>Severity Score</span>
-          <span>{score}/10</span>
-        </div>
-        <div className="w-full bg-gray-700 rounded-full h-1.5">
-          <div
-            className="h-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-red-500"
-            style={{ width: `${score * 10}%` }}
-          />
-        </div>
-      </div>
-
-      {alert.tier === "full" && (
-        <div>
-          <div className="flex justify-between text-xs text-gray-400 mb-1">
-            <span>Confidence</span>
-            <span>{confidence}%</span>
-          </div>
-          <div className="w-full bg-gray-700 rounded-full h-1.5">
-            <div
-              className="h-1.5 rounded-full bg-blue-500"
-              style={{ width: `${confidence}%` }}
-            />
-          </div>
+      {/* Status pulse */}
+      {alert.status !== "done" && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 10px",
+          background: "rgba(0,212,255,0.04)",
+          border: "1px solid rgba(0,212,255,0.15)",
+        }}>
+          <div style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: "var(--accent)",
+            animation: "threat-pulse 1.5s ease-in-out infinite",
+          }} />
+          <span style={{ fontSize: 9, color: "var(--accent)", letterSpacing: "0.08em" }}>
+            {alert.status === "investigating" ? "DEEP INVESTIGATION IN PROGRESS" : "TRIAGING ALERT"}
+          </span>
         </div>
       )}
 
+      {/* Summary */}
       {alert.summary && (
-        <p className="text-xs text-gray-300 leading-relaxed">{alert.summary}</p>
+        <div style={{
+          padding: "10px 12px",
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderLeft: `2px solid ${accentColor}`,
+        }}>
+          <div style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.12em", marginBottom: 5 }}>ANALYSIS</div>
+          <p style={{ fontSize: 10, color: "var(--text-primary)", lineHeight: 1.6 }}>
+            {alert.summary}
+          </p>
+        </div>
       )}
 
+      {/* Threat intel */}
       {threatIntel && <EnrichmentPanel intel={threatIntel} />}
 
-      {alert.status !== "done" && (
-        <p className="text-xs text-blue-400 animate-pulse">
-          {alert.status === "investigating"
-            ? "Deep investigation in progress..."
-            : "Triaging..."}
-        </p>
-      )}
+      {/* Kill chain */}
+      {killChain.length > 0 && <KillChainTimeline steps={killChain} />}
 
-      <KillChainTimeline steps={killChain} />
-
+      {/* Evidence trail */}
       {Object.keys(findings).length > 0 && (
         <AuditTrail findings={findings} queries={queries} />
       )}
 
-      {steps.length > 0 && (
-        <ContainmentActions alertId={alert.id} steps={steps} />
-      )}
+      {/* Containment actions */}
+      {steps.length > 0 && <ContainmentActions alertId={alert.id} steps={steps} />}
     </div>
   )
 }
 
-import { useState, useEffect } from "react"
-import { decideAction, getActions } from "../api"
-import type { ActionDecision } from "../types"
-
-function ContainmentActions({
-  alertId,
-  steps,
-}: {
-  alertId: string
-  steps: string[]
-}) {
+function ContainmentActions({ alertId, steps }: { alertId: string; steps: string[] }) {
   const [decisions, setDecisions] = useState<Record<number, "pending" | "approved" | "dismissed">>({})
 
   useEffect(() => {
@@ -112,39 +205,85 @@ function ContainmentActions({
 
   return (
     <div>
-      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-        Containment Actions
-      </h3>
-      <ul className="space-y-2">
+      <div className="section-divider" style={{ marginBottom: 8 }}>CONTAINMENT ACTIONS</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {steps.map((step, i) => {
           const status = decisions[i] ?? "pending"
           return (
-            <li key={i} className="border border-gray-700 rounded p-2">
-              <p className="text-xs text-gray-200 mb-2">{step}</p>
+            <div key={i} style={{
+              padding: "8px 10px",
+              background: status === "approved"
+                ? "rgba(0,232,135,0.05)"
+                : status === "dismissed"
+                ? "rgba(45,90,122,0.05)"
+                : "var(--bg-elevated)",
+              border: `1px solid ${
+                status === "approved" ? "rgba(0,232,135,0.25)"
+                : status === "dismissed" ? "var(--border)"
+                : "var(--border-bright)"
+              }`,
+            }}>
+              <p style={{ fontSize: 10, color: "var(--text-primary)", marginBottom: status === "pending" ? 7 : 0, lineHeight: 1.4 }}>
+                {step}
+              </p>
               {status === "pending" ? (
-                <div className="flex gap-2">
+                <div style={{ display: "flex", gap: 5 }}>
                   <button
                     onClick={() => decide(i, step, "approved").catch(console.error)}
-                    className="text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded transition-colors"
+                    style={{
+                      padding: "3px 10px",
+                      background: "rgba(0,232,135,0.08)",
+                      border: "1px solid rgba(0,232,135,0.3)",
+                      color: "var(--green)",
+                      fontSize: 9,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      cursor: "pointer",
+                      transition: "all 0.12s",
+                    }}
                   >
-                    ✓ Approve
+                    ✓ APPROVE
                   </button>
                   <button
                     onClick={() => decide(i, step, "dismissed").catch(console.error)}
-                    className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded transition-colors"
+                    style={{
+                      padding: "3px 10px",
+                      background: "transparent",
+                      border: "1px solid var(--border-bright)",
+                      color: "var(--text-secondary)",
+                      fontSize: 9,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      letterSpacing: "0.1em",
+                      cursor: "pointer",
+                      transition: "all 0.12s",
+                    }}
                   >
-                    ✗ Dismiss
+                    ✗ DISMISS
                   </button>
                 </div>
               ) : (
-                <span className={`text-xs font-medium ${status === "approved" ? "text-green-400" : "text-gray-500"}`}>
-                  {status === "approved" ? "✓ Approved" : "✗ Dismissed"}
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    background: status === "approved" ? "var(--green)" : "var(--text-dim)",
+                  }} />
+                  <span style={{
+                    fontSize: 9,
+                    color: status === "approved" ? "var(--green)" : "var(--text-dim)",
+                    letterSpacing: "0.1em",
+                    fontWeight: 700,
+                  }}>
+                    {status === "approved" ? "APPROVED" : "DISMISSED"}
+                  </span>
+                </div>
               )}
-            </li>
+            </div>
           )
         })}
-      </ul>
+      </div>
     </div>
   )
 }

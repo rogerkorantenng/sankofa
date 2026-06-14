@@ -1,10 +1,10 @@
 import { useState } from "react"
 
 const AGENT_LABELS: Record<string, string> = {
-  auth: "Auth Agent",
-  network: "Network Agent",
-  endpoint: "Endpoint Agent",
-  lateral: "Lateral Movement Agent",
+  auth:     "AUTH AGENT",
+  network:  "NETWORK AGENT",
+  endpoint: "ENDPOINT AGENT",
+  lateral:  "LATERAL MOVEMENT",
 }
 
 export function AuditTrail({
@@ -18,15 +18,13 @@ export function AuditTrail({
   if (!agents.length) return null
 
   return (
-    <div className="mt-3">
-      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-        Evidence Trail
-      </h3>
-      <div className="space-y-2">
+    <div>
+      <div className="section-divider" style={{ marginBottom: 8 }}>EVIDENCE TRAIL</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {agents.map((agent) => (
           <AgentEvidence
             key={agent}
-            label={AGENT_LABELS[agent] ?? agent}
+            label={AGENT_LABELS[agent] ?? agent.toUpperCase()}
             finding={findings[agent]}
             spl={queries?.[agent] ?? ""}
           />
@@ -36,42 +34,80 @@ export function AuditTrail({
   )
 }
 
-function AgentEvidence({
-  label,
-  finding,
-  spl,
-}: {
-  label: string
-  finding: string
-  spl: string
-}) {
+function AgentEvidence({ label, finding, spl }: { label: string; finding: string; spl: string }) {
   const [open, setOpen] = useState(false)
   const isMcp = spl.startsWith("[MCP generated]")
   const displaySpl = isMcp ? spl.replace("[MCP generated] ", "") : spl
 
   return (
-    <div className="border border-gray-700 rounded overflow-hidden">
+    <div style={{
+      border: "1px solid var(--border)",
+      background: "var(--bg-elevated)",
+      overflow: "hidden",
+    }}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-gray-800 hover:bg-gray-700 text-left"
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "6px 10px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-200">{label}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ fontSize: 8, color: "var(--text-secondary)", letterSpacing: "0.12em", fontWeight: 700 }}>
+            {label}
+          </span>
           {isMcp && (
-            <span className="text-xs bg-purple-900 text-purple-300 px-1.5 py-0.5 rounded font-mono">
+            <span style={{
+              fontSize: 7,
+              padding: "1px 5px",
+              background: "rgba(139,92,246,0.15)",
+              border: "1px solid rgba(139,92,246,0.3)",
+              color: "#A78BFA",
+              letterSpacing: "0.1em",
+              fontWeight: 700,
+            }}>
               MCP
             </span>
           )}
         </div>
-        <span className="text-gray-500 text-xs">{open ? "▾" : "▸"}</span>
+        <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{open ? "▾" : "▸"}</span>
       </button>
       {open && (
-        <div className="px-3 py-2 space-y-2 bg-gray-900">
-          <p className="text-xs text-gray-300 leading-relaxed">{finding}</p>
+        <div style={{
+          padding: "8px 10px",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}>
+          <p style={{ fontSize: 10, color: "var(--text-primary)", lineHeight: 1.5, margin: 0 }}>
+            {finding}
+          </p>
           {spl && (
             <div>
-              <p className="text-xs text-gray-500 mb-1 font-mono">SPL Query:</p>
-              <pre className="text-xs text-blue-300 font-mono bg-gray-800 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+              <div style={{ fontSize: 7, color: "var(--text-dim)", letterSpacing: "0.12em", marginBottom: 4 }}>
+                SPL QUERY
+              </div>
+              <pre style={{
+                fontSize: 9,
+                color: "#7BB8D4",
+                fontFamily: "'JetBrains Mono', monospace",
+                background: "var(--bg-base)",
+                padding: "6px 8px",
+                margin: 0,
+                overflowX: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+                border: "1px solid var(--border)",
+                lineHeight: 1.5,
+              }}>
                 {displaySpl}
               </pre>
             </div>

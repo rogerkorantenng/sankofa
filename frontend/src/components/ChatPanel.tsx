@@ -46,7 +46,6 @@ export function ChatPanel({ alertId }: { alertId: string }) {
     setStreaming(true)
     let assistantContent = ""
     setMessages((prev) => [...prev, { role: "assistant", content: "" }])
-
     try {
       for await (const chunk of streamChat(alertId, userMsg)) {
         assistantContent += chunk
@@ -63,41 +62,105 @@ export function ChatPanel({ alertId }: { alertId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full border-t border-gray-700">
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      background: "var(--bg-base)",
+    }}>
+      {/* Messages */}
+      <div style={{
+        flex: 1,
+        overflowY: "auto",
+        padding: "12px 14px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}>
         {messages.length === 0 && (
-          <p className="text-xs text-gray-500">Ask a follow-up question about this alert...</p>
+          <div style={{
+            padding: "20px 0",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 20, marginBottom: 6, opacity: 0.15 }}>◈</div>
+            <p style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.1em" }}>
+              ASK THE AI ANALYST
+            </p>
+            <p style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 4, lineHeight: 1.5 }}>
+              What other hosts contacted? Any lateral movement?<br/>
+              Is this a false positive? What's the blast radius?
+            </p>
+          </div>
         )}
         {messages.map((msg, i) => (
-          <div key={i} className={msg.role === "user" ? "text-right" : "text-left"}>
+          <div key={i} style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: msg.role === "user" ? "flex-end" : "flex-start",
+          }}>
             {msg.role === "user" ? (
-              <span className="inline-block bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg max-w-xs">
+              <div style={{
+                maxWidth: "80%",
+                padding: "7px 11px",
+                background: "rgba(0,212,255,0.08)",
+                border: "1px solid rgba(0,212,255,0.2)",
+                fontSize: 10,
+                color: "#CDD8E3",
+                lineHeight: 1.5,
+              }}>
                 {msg.content}
-              </span>
+              </div>
             ) : (
-              <div className="text-xs text-gray-200 space-y-1">
+              <div style={{ maxWidth: "92%", display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  marginBottom: 2,
+                }}>
+                  <div style={{
+                    width: 5,
+                    height: 5,
+                    border: "1px solid var(--accent)",
+                    transform: "rotate(45deg)",
+                  }} />
+                  <span style={{ fontSize: 8, color: "var(--accent)", letterSpacing: "0.1em", fontWeight: 700 }}>
+                    ANALYST
+                  </span>
+                </div>
                 {parseMessageParts(msg.content).map((part, j) =>
                   part.type === "search" ? (
                     <ThinkingStep key={j} query={part.value} />
                   ) : (
-                    <div key={j} className="prose prose-invert prose-xs max-w-none
-                      [&>p]:mb-2 [&>p]:leading-relaxed
-                      [&>ul]:ml-4 [&>ul]:list-disc [&>ul>li]:mb-0.5
-                      [&>ol]:ml-4 [&>ol]:list-decimal [&>ol>li]:mb-0.5
-                      [&>h1]:text-sm [&>h1]:font-bold [&>h1]:text-white [&>h1]:mb-1
-                      [&>h2]:text-xs [&>h2]:font-bold [&>h2]:text-white [&>h2]:mb-1
-                      [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:text-gray-300 [&>h3]:mb-1
-                      [&>strong]:text-white [&>strong]:font-semibold
-                      [&>code]:bg-gray-700 [&>code]:px-1 [&>code]:rounded [&>code]:text-blue-300
-                      [&>hr]:border-gray-700 [&>hr]:my-2
-                      [&>table]:w-full [&>table]:text-xs [&>table>thead>tr>th]:text-left [&>table>thead>tr>th]:pb-1 [&>table>thead>tr>th]:text-gray-400
-                      [&>table>tbody>tr>td]:py-0.5 [&>table>tbody>tr>td]:pr-3">
-                      <ReactMarkdown>{part.value}</ReactMarkdown>
+                    <div key={j} style={{
+                      fontSize: 10,
+                      color: "var(--text-primary)",
+                      lineHeight: 1.6,
+                    }}
+                    className="prose-sankofa">
+                      <ReactMarkdown
+                        components={{
+                          p: ({children}) => <p style={{ margin: "0 0 6px", lineHeight: 1.6 }}>{children}</p>,
+                          strong: ({children}) => <strong style={{ color: "#E8F0F8", fontWeight: 600 }}>{children}</strong>,
+                          ul: ({children}) => <ul style={{ margin: "4px 0 6px 14px", padding: 0 }}>{children}</ul>,
+                          li: ({children}) => <li style={{ marginBottom: 2 }}>{children}</li>,
+                          code: ({children}) => <code style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", padding: "1px 4px", color: "var(--accent)", fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}>{children}</code>,
+                          h3: ({children}) => <h3 style={{ fontSize: 11, fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, color: "#E8F0F8", margin: "8px 0 4px", letterSpacing: "0.05em" }}>{children}</h3>,
+                        }}
+                      >
+                        {part.value}
+                      </ReactMarkdown>
                     </div>
                   )
                 )}
                 {streaming && i === messages.length - 1 && (
-                  <span className="inline-block w-1.5 h-3 bg-gray-400 animate-pulse" />
+                  <span style={{
+                    display: "inline-block",
+                    width: 6,
+                    height: 12,
+                    background: "var(--accent)",
+                    animation: "blink 1s step-end infinite",
+                  }} />
                 )}
               </div>
             )}
@@ -105,21 +168,53 @@ export function ChatPanel({ alertId }: { alertId: string }) {
         ))}
         <div ref={bottomRef} />
       </div>
-      <div className="flex gap-2 p-3 border-t border-gray-700">
+
+      {/* Input */}
+      <div style={{
+        display: "flex",
+        gap: 6,
+        padding: "8px 14px",
+        borderTop: "1px solid var(--border)",
+        background: "var(--bg-panel)",
+        flexShrink: 0,
+      }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send().catch(console.error) }}
-          placeholder="Ask about this alert..."
-          className="flex-1 bg-gray-800 text-white text-xs px-3 py-2 rounded border border-gray-600 focus:outline-none focus:border-blue-400"
+          placeholder="Query the analyst..."
           disabled={streaming}
+          style={{
+            flex: 1,
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border-bright)",
+            color: "var(--text-primary)",
+            fontSize: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+            padding: "6px 10px",
+            outline: "none",
+            transition: "border-color 0.12s",
+          }}
+          onFocus={e => { (e.target as HTMLElement).style.borderColor = "var(--accent)" }}
+          onBlur={e => { (e.target as HTMLElement).style.borderColor = "var(--border-bright)" }}
         />
         <button
           onClick={() => send().catch(console.error)}
           disabled={streaming || !input.trim()}
-          className="text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-3 py-2 rounded transition-colors"
+          style={{
+            padding: "0 14px",
+            background: streaming || !input.trim() ? "var(--bg-elevated)" : "rgba(0,212,255,0.1)",
+            border: `1px solid ${streaming || !input.trim() ? "var(--border)" : "rgba(0,212,255,0.3)"}`,
+            color: streaming || !input.trim() ? "var(--text-dim)" : "var(--accent)",
+            fontSize: 9,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            cursor: streaming || !input.trim() ? "not-allowed" : "pointer",
+            transition: "all 0.12s",
+          }}
         >
-          Send
+          {streaming ? "···" : "SEND"}
         </button>
       </div>
     </div>
