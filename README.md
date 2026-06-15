@@ -8,6 +8,9 @@ Built for the **Splunk Agentic Ops Hackathon** · Security Track · by Roger
 
 ---
 
+## Architecture
+
+
 ![Architecture](Architecture.png)
 
 ---
@@ -84,46 +87,6 @@ Every analyst decision — approve, dismiss, mark false positive — is stored a
 - **Action Log**: slide-in panel showing every autonomous action taken with status, timestamp, and result
 - **Stats Bar**: live severity counts, average confidence, actions executed, pending approvals
 
----
-
-## Architecture
-
-```
-Splunk Enterprise ──── REST API ──────────────────────────────────┐
-Splunk MCP Server ──── generate_spl ──────────────────────────────┤
-VirusTotal / AbuseIPDB ────────────────────────────────────────────┤
-Anthropic Claude (Haiku + Sonnet) ─────────────────────────────────┤
-                                                                    ▼
-                           ┌──────────────────────────────────────────┐
-                           │            FastAPI Backend               │
-                           │  ┌──────────┐  ┌─────────────────────┐  │
-                           │  │  Alert   │  │    Triage Engine     │  │
-                           │  │  Poller  │  │  ┌────┐ ┌────┐      │  │
-                           │  │  30s     │  │  │Auth│ │Net │ ┌──┐ │  │
-                           │  └──────────┘  │  └────┘ └────┘ │EP│ │  │
-                           │               │  ┌────┐ ┌────┐  └──┘ │  │
-                           │               │  │Lat │ │Sup │       │  │
-                           │               │  └────┘ └────┘       │  │
-                           │               └─────────────────────┘  │
-                           │  ┌──────────┐  ┌──────────┐            │
-                           │  │ Runbook  │  │ Action   │            │
-                           │  │ Engine   │  │ Executor │            │
-                           │  └──────────┘  └──────────┘            │
-                           │  ┌──────────┐  ┌──────────┐            │
-                           │  │Enrichment│  │ Feedback │            │
-                           │  └──────────┘  │  Loop    │            │
-                           │                └──────────┘            │
-                           └──────────┬───────────────┬─────────────┘
-                                      │               │
-                          ┌───────────┘               └──────────────┐
-                          ▼                                           ▼
-             ┌─────────────────────┐                    ┌────────────────────┐
-             │    React Frontend   │                    │       Slack        │
-             │  Graph · Timeline   │                    │  Alert cards       │
-             │  Investigation      │                    │  Approve/Dismiss   │
-             │  Action Log · Chat  │                    │  Confirmations     │
-             └─────────────────────┘                    └────────────────────┘
-```
 
 ---
 
